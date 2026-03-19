@@ -1,6 +1,6 @@
 # GompherMP
 
-An implementation of structured parallelism in the Go programming language using OpenMP-like clauses.
+An implementation of parallelism in the Go programming language using OpenMP-like clauses.
 
 ## About This Project
 This repository contains the ongoing development and documentation for GompherMP. The project focuses on adapting a subset of OpenMP directives to Go. The goal is to allow for explicit and structured concurrent execution using Go's native goroutines and synchronization primitives.
