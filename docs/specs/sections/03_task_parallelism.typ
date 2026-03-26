@@ -105,6 +105,57 @@ bloque
 
 *Explicación:* Garantiza la finalización de todo el subárbol de tareas generado.
 
+
+== Directiva taskloop
+
+Distribuye las iteraciones de un bucle generando una tarea por cada chunk de iteraciones. Combina el comportamiento de task y for en una sola directiva.
+
+*Sintaxis Formal:*
+
+```go
+//gompher taskloop [grainsize(n) | firstprivate(list) | private(list)]
+bloque
+```
+
+=== Caso 1: Generación Automática de Tareas
+
+#figure(
+  ```go
+//gompher parallel
+{
+    //gompher single
+    {
+        //gompher taskloop
+        for i := 0; i < 10; i++ {
+            procesar(i)
+        }
+    }
+}
+  ```,
+  caption: [Uso básico de taskloop]
+)
+*Explicación:* Se genera automáticamente una tarea por cada iteración del bucle. El uso de single garantiza que solo una goroutine genere las tareas, evitando duplicados.
+
+=== Caso 2: Control de Granularidad
+
+#figure(
+  ```go
+//gompher parallel
+{
+    //gompher single
+    {
+        //gompher taskloop grainsize(5)
+        for i := 0; i < 100; i++ {
+            procesar(i)
+        }
+    }
+}
+  ```,
+  caption: [Uso de grainsize en taskloop]
+)
+
+*Explicación:* Con grainsize(5) se generan 20 tareas de 5 iteraciones cada una, reduciendo el overhead de crear 100 tareas individuales.
+
 == Cláusula de Dependencia (depend)
 Define restricciones de orden de ejecución.
 

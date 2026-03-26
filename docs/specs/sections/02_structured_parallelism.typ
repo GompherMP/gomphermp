@@ -232,3 +232,122 @@ Especifica un punto de sincronización explícito.
 )
 
 *Explicación:* Todas las goroutines del equipo deben alcanzar la directiva `barrier` antes de que cualquiera de ellas pueda continuar la ejecución más allá de ese punto.
+
+== Directiva atomic
+Garantiza que una expresión simple sobre una variable compartida se ejecute de forma atómica, sin interrupciones de otras goroutines.
+
+*Sintaxis Formal:*
+
+```go
+//gompher atomic [read | write | update]
+bloque
+```
+=== Caso 1: Ejemplo de Update
+
+#figure(
+  ```go
+var contador int
+//gompher parallel
+{
+    //gompher atomic update
+    contador++
+}
+  ```,
+  caption: [Uso de atomic update]
+)
+
+*Explicación:* Protege la operación de modificación sobre contador. A diferencia de critical, permite que distintas goroutines operen sobre distintas variables en paralelo, siendo más eficiente.
+
+=== Caso 2: Ejemplo de Read
+
+#figure(
+  ```go
+var x int64
+var v int64
+//gompher parallel
+{
+    //gompher atomic read
+    v = x
+}
+  ```,
+  caption: [Uso de atomic read]
+)
+
+*Explicación*: Garantiza que la lectura de x sea atómica, evitando que una goroutine lea un valor parcialmente escrito por otra.
+
+=== Caso 3: Ejemplo de Write
+
+#figure(
+  ```go
+var x int64
+//gompher parallel
+{
+    //gompher atomic write
+    x = 42
+}
+  ```,
+  caption: [Uso de atomic write]
+)
+
+*Explicación*: Garantiza que la escritura sobre x sea atómica, evitando que otra goroutine lea un valor a medio escribir.
+
+== Directiva schedule
+Controla cómo se distribuyen las iteraciones de un for paralelo entre las goroutines del equipo, agrupándolas en chunks.
+
+*Sintaxis Formal:*
+
+```go
+//gompher for schedule(kind[, chunk_size])
+bloque
+```
+
+=== Caso 1: Uso de schedule static
+
+#figure(
+  ```go
+//gompher parallel
+{
+    //gompher for schedule(static, 10)
+    for i := 0; i < 100; i++ {
+        trabajo(i)
+    }
+}
+  ```,
+  caption: [Uso de schedule static]
+)
+
+*Explicación:* Las iteraciones se dividen en chunks de tamaño 10 y se asignan a las goroutines en round-robin antes de ejecutar. Si no se especifica chunk_size, las iteraciones se dividen en bloques aproximadamente iguales. Ideal cuando todas las iteraciones tienen un costo computacional similar.
+
+=== Caso 2: Uso de schedule dynamic
+
+#figure(
+  ```go
+//gompher parallel
+{
+    //gompher for schedule(dynamic, 5)
+    for i := 0; i < 100; i++ {
+        trabajoPesado(i)
+    }
+}
+  ```,
+  caption: [Uso de schedule dynamic]
+)
+
+*Explicación:* Cada goroutine toma un chunk de 5 iteraciones y cuando termina solicita otro, hasta que no queden iteraciones disponibles. Ideal cuando las iteraciones tienen costos variables, evitando que goroutines queden ociosas esperando a las más lentas. Si no se especifica chunk_size, el valor por defecto es 1.
+
+=== Caso 3: Uso de schedule guided
+
+#figure(
+  ```go
+//gompher parallel
+{
+    //gompher for schedule(guided)
+    for i := 0; i < 100; i++ {
+        trabajo(i)
+    }
+}
+  ```,
+  caption: [Uso de schedule guided]
+)
+
+*Explicación:* Similar a dynamic pero los chunks comienzan grandes y se van reduciendo progresivamente hasta llegar a 1. El tamaño de cada chunk se calcula como las iteraciones restantes divididas entre el número de goroutines. Ofrece un balance entre el bajo overhead de static y la flexibilidad de dynamic.

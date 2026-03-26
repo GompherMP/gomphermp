@@ -44,3 +44,4 @@
 #include "sections/01_introduction.typ"
 #include "sections/02_structured_parallelism.typ"
 #include "sections/03_task_parallelism.typ"
+#include "sections/04_data_clauses.typ"
