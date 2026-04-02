@@ -1,0 +1,2 @@
+= Introducción y Alcance
+Este documento detalla el diseño de la arquitectura interna de la herramienta GompherMP. Se describen los módulos del programa, se ilustran sus interacciones y se explican los mecanismos que soportan la paralelización automática.
