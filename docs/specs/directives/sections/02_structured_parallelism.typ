@@ -335,19 +335,19 @@ bloque
 
 *Explicación:* Cada goroutine toma un chunk de 5 iteraciones y cuando termina solicita otro, hasta que no queden iteraciones disponibles. Ideal cuando las iteraciones tienen costos variables, evitando que goroutines queden ociosas esperando a las más lentas. Si no se especifica chunk_size, el valor por defecto es 1.
 
-=== Caso 3: Uso de schedule guided
+// === Caso 3: Uso de schedule guided
 
-#figure(
-  ```go
-//gompher parallel
-{
-    //gompher for schedule(guided)
-    for i := 0; i < 100; i++ {
-        trabajo(i)
-    }
-}
-  ```,
-  caption: [Uso de schedule guided]
-)
+// #figure(
+//   ```go
+// //gompher parallel
+// {
+//     //gompher for schedule(guided)
+//     for i := 0; i < 100; i++ {
+//         trabajo(i)
+//     }
+// }
+//   ```,
+//   caption: [Uso de schedule guided]
+// )
 
-*Explicación:* Similar a dynamic pero los chunks comienzan grandes y se van reduciendo progresivamente hasta llegar a 1. El tamaño de cada chunk se calcula como las iteraciones restantes divididas entre el número de goroutines. Ofrece un balance entre el bajo overhead de static y la flexibilidad de dynamic.
+// *Explicación:* Similar a dynamic pero los chunks comienzan grandes y se van reduciendo progresivamente hasta llegar a 1. El tamaño de cada chunk se calcula como las iteraciones restantes divididas entre el número de goroutines. Ofrece un balance entre el bajo overhead de static y la flexibilidad de dynamic.
