@@ -24,13 +24,15 @@
 )
 
 #align(center)[
-  #text(17pt, weight: "bold")[Especificación Técnica de Directivas y Cláusulas para GompherMP]
+  #text(17pt, weight: "bold")[Especificación funcional de la Interfaz - CLI de GompherMP]
   
   #v(1em)
   Jorge David Alejandro Contreras \
   Patricia Natividad Cántaro Márquez \
-  19 de marzo de 2026
+  3 de abril de 2026
 ]
+
+#set par(justify: true)
 
 #v(1em)
 
@@ -41,7 +43,7 @@
 
 #pagebreak()
 
-#include "sections/01_introduction.typ"
-#include "sections/02_structured_parallelism.typ"
-#include "sections/03_task_parallelism.typ"
-#include "sections/04_data_clauses.typ"
+#include "sections/01_general.typ"
+#include "sections/02_commands.typ"
+#include "sections/03_pipeline.typ"
+#include "sections/04_errors.typ"
