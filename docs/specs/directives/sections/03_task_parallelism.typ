@@ -6,23 +6,26 @@ Define una unidad de trabajo explícita y asíncrona.
 
 *Sintaxis Formal:*
 
-```go
-//gompher task [depend(tipo:list) | private(list) | firstprivate(list)]
-bloque
-```
+#figure(
+  ```go
+  //gompher task [depend(tipo:list) | private(list) | firstprivate(list)]
+  bloque
+  ```,
+  caption: [Gramática de la directiva de creación de tareas asíncronas (task)]
+)
 
 === Caso 1: Tarea Simple
 
 #figure(
   ```go
-//gompher parallel
-{
-    //gompher single
-    {
-        //gompher task
-        { calculoPesado() }
-    }
-}
+  //gompher parallel
+  {
+      //gompher single
+      {
+          //gompher task
+          { calculoPesado() }
+      }
+  }
   ```,
   caption: [Generación de tarea]
 )
@@ -33,18 +36,18 @@ bloque
 
 #figure(
   ```go
-//gompher parallel
-{
-    //gompher single
-    {
-        for i := 0; i < 10; i++ {
-            //gompher task firstprivate(i)
-            {
-                process(i) // 'i' capturado por valor
-            }
-        }
-    }
-}
+  //gompher parallel
+  {
+      //gompher single
+      {
+          for i := 0; i < 10; i++ {
+              //gompher task firstprivate(i)
+              {
+                  process(i) // 'i' capturado por valor
+              }
+          }
+      }
+  }
   ```,
   caption: [Uso de firstprivate]
 )
@@ -56,24 +59,27 @@ Sincroniza la tarea actual esperando a sus tareas hijas directas.
 
 *Sintaxis Formal:*
 
-```go
-//gompher taskwait
-```
+#figure(
+  ```go
+  //gompher taskwait
+  ```,
+  caption: [Sintaxis de la directiva de barrera explícita para tareas hijas (taskwait)]
+)
 
 === Ejemplo de Sincronización Local
 
 #figure(
   ```go
-//gompher task
-{
-    //gompher task
-    hijo1()
-    //gompher task
-    hijo2()
+  //gompher task
+  {
+      //gompher task
+      hijo1()
+      //gompher task
+      hijo2()
 
-    //gompher taskwait
-    fmt.Println("Hijos terminados")
-}
+      //gompher taskwait
+      fmt.Println("Hijos terminados")
+  }
   ```,
   caption: [Sincronización de hermanos]
 )
@@ -85,20 +91,23 @@ Sincroniza todas las tareas descendientes en su ámbito.
 
 *Sintaxis Formal:*
 
-```go
-//gompher taskgroup
-bloque
-```
+#figure(
+  ```go
+  //gompher taskgroup
+  bloque
+  ```,
+  caption: [Gramática de la directiva de sincronización de subárboles de tareas (taskgroup)]
+)
 
 === Ejemplo de Sincronización Profunda
 
 #figure(
   ```go
-//gompher taskgroup
-{
-    //gompher task
-    crearArbolRecursivo()
-}
+  //gompher taskgroup
+  {
+      //gompher task
+      crearArbolRecursivo()
+  }
   ```,
   caption: [Grupo de tareas]
 )
@@ -112,25 +121,28 @@ Distribuye las iteraciones de un bucle generando una tarea por cada chunk de ite
 
 *Sintaxis Formal:*
 
-```go
-//gompher taskloop [grainsize(n) | firstprivate(list) | private(list)]
-bloque
-```
+#figure(
+  ```go
+  //gompher taskloop [grainsize(n) | firstprivate(list) | private(list)]
+  bloque
+  ```,
+  caption: [Sintaxis formal de la construcción de iteración basada en tareas (taskloop)]
+)
 
 === Caso 1: Generación Automática de Tareas
 
 #figure(
   ```go
-//gompher parallel
-{
-    //gompher single
-    {
-        //gompher taskloop
-        for i := 0; i < 10; i++ {
-            procesar(i)
-        }
-    }
-}
+  //gompher parallel
+  {
+      //gompher single
+      {
+          //gompher taskloop
+          for i := 0; i < 10; i++ {
+              procesar(i)
+          }
+      }
+  }
   ```,
   caption: [Uso básico de taskloop]
 )
@@ -140,16 +152,16 @@ bloque
 
 #figure(
   ```go
-//gompher parallel
-{
-    //gompher single
-    {
-        //gompher taskloop grainsize(5)
-        for i := 0; i < 100; i++ {
-            procesar(i)
-        }
-    }
-}
+  //gompher parallel
+  {
+      //gompher single
+      {
+          //gompher taskloop grainsize(5)
+          for i := 0; i < 100; i++ {
+              procesar(i)
+          }
+      }
+  }
   ```,
   caption: [Uso de grainsize en taskloop]
 )
@@ -161,20 +173,23 @@ Define restricciones de orden de ejecución.
 
 *Sintaxis Formal:*
 
-```go
-depend(in:list) | depend(out:list) | depend(inout:list)
-```
+#figure(
+  ```go
+  depend(in:list) | depend(out:list) | depend(inout:list)
+  ```,
+  caption: [Sintaxis de la cláusula de dependencias de flujo de datos (depend)]
+)
 
 === Caso 1: Productor-Consumidor
 
 #figure(
   ```go
-var x int
-//gompher task depend(out:x)
-{ x = 1 } // Tarea A
+  var x int
+  //gompher task depend(out:x)
+  { x = 1 } // Tarea A
 
-//gompher task depend(in:x)
-{ fmt.Println(x) } // Tarea B
+  //gompher task depend(in:x)
+  { fmt.Println(x) } // Tarea B
   ```,
   caption: [Dependencia Flow (RAW)]
 )
@@ -185,16 +200,16 @@ var x int
 
 #figure(
   ```go
-var buff []byte
+  var buff []byte
 
-//gompher task depend(out:buff)
-{ buff = leer() } // Paso 1
+  //gompher task depend(out:buff)
+  { buff = leer() } // Paso 1
 
-//gompher task depend(inout:buff)
-{ buff = comprimir(buff) } // Paso 2
+  //gompher task depend(inout:buff)
+  { buff = comprimir(buff) } // Paso 2
 
-//gompher task depend(in:buff)
-{ enviar(buff) } // Paso 3
+  //gompher task depend(in:buff)
+  { enviar(buff) } // Paso 3
   ```,
   caption: [Encadenamiento con inout]
 )

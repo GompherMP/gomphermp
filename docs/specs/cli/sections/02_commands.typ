@@ -17,16 +17,19 @@ El argumento principal es la ruta al archivo fuente que contiene las directivas 
 == Banderas (Flags) Soportadas
 Para ofrecer un mayor control sobre el proceso de transpilación y compilación, se han definido las siguientes banderas:
 
-#table(
-  columns: (auto, auto, 1fr),
-  inset: 10pt,
-  align: horizon,
-  [*Bandera*], [*Alias*], [*Descripción*],
-  [`--output`], [`-o`], [Especifica el nombre y la ruta del binario ejecutable resultante.],
-  [`--verbose`], [`-v`], [Activa el modo detallado. Imprime en la terminal las fases del pipeline y las directivas detectadas en el AST.],
-  [`--keep-temp`], [`-k`], [Conserva los archivos fuente `.go` intermedios generados tras la inyección del AST. Útil para depuración.],
-  [`--help`], [`-h`], [Despliega el menú de ayuda con la descripción de comandos y sintaxis de las directivas.],
-  [`--version`], [], [Muestra la versión actual de la herramienta GompherMP.],
+#figure(
+  table(
+    columns: (auto, auto, 1fr),
+    inset: 10pt,
+    align: horizon,
+    [*Bandera*], [*Alias*], [*Descripción*],
+    [`--output`], [`-o`], [Especifica el nombre y la ruta del binario ejecutable resultante.],
+    [`--verbose`], [`-v`], [Activa el modo detallado. Imprime en la terminal las fases del pipeline y las directivas detectadas en el AST.],
+    [`--keep-temp`], [`-k`], [Conserva los archivos fuente `.go` intermedios generados tras la inyección del AST. Útil para depuración.],
+    [`--help`], [`-h`], [Despliega el menú de ayuda con la descripción de comandos y sintaxis de las directivas.],
+    [`--version`], [], [Muestra la versión actual de la herramienta GompherMP.]
+  ),
+  caption: [Banderas y opciones soportadas por el comando build]
 )
 
 == Ejemplos de Uso
@@ -60,6 +63,7 @@ Ideal para analizar qué directivas detectó el AST y conservar el código Go in
   $ gompher build --help
   GompherMP CLI - Transpilador de paralelismo estructurado para Go
   Uso: gompher build [opciones] <archivo.go>
+  ...
   ```,
   caption: [Salida estándar del comando --help]
 )

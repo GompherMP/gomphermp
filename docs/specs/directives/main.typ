@@ -18,11 +18,17 @@
   ]
 }
 
-#show figure: set align(left)
 #show figure.caption: set align(center)
-#set figure(
-  supplement: [Bloque de código]
-)
+
+#show figure.where(kind: table): set align(center)
+#show figure.where(kind: table): set figure.caption(position: top)  
+#show figure.where(kind: table): set figure(supplement: [Tabla])
+
+#show figure.where(kind: raw): set align(left)
+#show figure.where(kind: raw): set figure(supplement: [Bloque de código])
+
+#show figure.where(kind: image): set align(center)
+#show figure.where(kind: image): set figure(supplement: [Figura])
 
 #align(center)[
   #text(17pt, weight: "bold")[Especificación Técnica de Directivas y Cláusulas para GompherMP]
