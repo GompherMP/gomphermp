@@ -2,7 +2,6 @@
 #set page(numbering: "1")
 #set heading(numbering: "1.1.")
 #set text(lang: "es")
-
 #show raw.where(block: true): it => {
   block(fill: luma(240), inset: 12pt, radius: 4pt, width: 100%)[
     #let lines = it.text.split("\n")
@@ -18,11 +17,17 @@
   ]
 }
 
-#show figure: set align(left)
 #show figure.caption: set align(center)
-#set figure(
-  supplement: [Bloque de código]
-)
+
+#show figure.where(kind: table): set align(center)
+#show figure.where(kind: table): set figure.caption(position: top)  
+#show figure.where(kind: table): set figure(supplement: [Tabla])
+
+#show figure.where(kind: raw): set align(left)
+#show figure.where(kind: raw): set figure(supplement: [Bloque de código])
+
+#show figure.where(kind: image): set align(center)
+#show figure.where(kind: image): set figure(supplement: [Figura])
 
 #align(center)[
   #text(17pt, weight: "bold")[Especificación Técnica de Directivas y Cláusulas para GompherMP]

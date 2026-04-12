@@ -1,33 +1,31 @@
 
 = Construcciones de Paralelismo Estructurado
 
-*Sintaxis Formal:*
-
 == Directiva parallel
 Define una región paralela, instanciando un equipo de goroutines.
 
 *Sintaxis Formal:*
 
 #figure(
-```go
-//gompher parallel [private(list) | firstprivate(list) | shared(list)]
-bloque
-```,
-caption: [Ejemplo de sintaxis]
+  ```go
+  //gompher parallel [private(list) | firstprivat(list) | shared(list)]
+  bloque
+  ```,
+  caption: [Gramática formal de la directiva parallel]
 )
 
 === Caso 1: Región Básica
 
 #figure(
-```go
-func main() {
-    //gompher parallel
-    {
-        fmt.Println("Hola desde el equipo paralelo")
-    }
-}
-```,
-caption: [Creación de región paralela]
+  ```go
+  func main() {
+      //gompher parallel
+      {
+          fmt.Println("Hola desde el equipo paralelo")
+      }
+  }
+  ```,
+  caption: [Creación de región paralela]
 )
 
 *Explicación:* Se crea un equipo de N goroutines. Cada una ejecuta el bloque de impresión de manera concurrente. Al finalizar el bloque, existe una barrera implícita donde la goroutine maestra espera a las demás.
@@ -37,17 +35,17 @@ caption: [Creación de región paralela]
 
 #figure(
   ```go
-var global int = 10
-var local int = 5
+  var global int = 10
+  var local int = 5
 
-//gompher parallel shared(global) private(local)
-{
-    // 'local' es una nueva variable (valor 0 o basura)
-    local = 1
-    // 'global' es la misma dirección de memoria para todos
-    global = global + local
-}
-// Al salir, 'local' original sigue siendo 5. 'global' ha cambiado.
+  //gompher parallel shared(global) private(local)
+  {
+      // 'local' es una nueva variable (valor 0 o basura)
+      local = 1
+      // 'global' es la misma dirección de memoria para todos
+      global = global + local
+  }
+  // Al salir, 'local' original sigue siendo 5. 'global' ha cambiado.
   ```,
   caption: [Alcance de variables]
 )
@@ -59,56 +57,91 @@ Distribuye las iteraciones de un bucle entre las goroutines del equipo actual.
 
 *Sintaxis Formal:*
 
-```go
-//gompher for [private(list) | firstprivate(list)]
-bucle_for_canonico
-```
-
+#figure(
+  ```go
+  //gompher for [private(list) | firstprivate(list)]
+  bucle_for_canonico
+  ```,
+  caption: [Sintaxis de la construcción de bucle paralelo (for)]
+)
 === Ejemplo de Reparto Estático
 
 #figure(
   ```go
-var datos [100]int
-//gompher parallel
-{
-    //gompher for
-    for i := 0; i < 100; i++ {
-        datos[i] = i * i
-    }
-}
+  var datos [100]int
+  //gompher parallel
+  {
+      //gompher for
+      for i := 0; i < 100; i++ {
+          datos[i] = i * i
+      }
+  }
   ```,
   caption: [Reparto de trabajo estático]
 )
 
 *Explicación:* El runtime divide el espacio de iteración [0, 100) en bloques (chunks) y asigna cada bloque a una goroutine del equipo existente.
 
+== Directiva parallel for
+
+Aunque en la teoría de lenguajes se define como una construcción combinada (un atajo sintáctico para una región `parallel` que contiene un único bloque `for` en su interior), se documenta en esta sección como una directiva principal debido a su alta frecuencia de uso práctico y legibilidad.
+
+*Sintaxis Formal:*
+
+#figure(
+  ```go
+  //gompher parallel for [private(list) | firstprivate(list) | shared(list) | schedule(kind[, chunk_size])]
+  bucle_for_canonico
+  ```,
+  caption: [Sintaxis formal de la construcción combinada parallel for]
+)
+
+=== Ejemplo de Uso Directo
+
+#figure(
+  ```go
+  var vectorDestino [1000]int
+  
+  //gompher parallel for schedule(static, 50)
+  for i := 0; i < 1000; i++ {
+      vectorDestino[i] = operacion(i)
+  }
+  ```,
+  caption: [Distribución inmediata de iteraciones con parallel for]
+)
+
+*Explicación:* Se crea el equipo de goroutines y se distribuye el espacio de iteración del bucle, aplicando las políticas de `schedule` y alcance de variables especificadas.
+
 == Directiva sections
 Define un conjunto de bloques de trabajo independientes distribuibles.
 
 *Sintaxis Formal:*
 
-```go
-//gompher sections [private(list) | firstprivate(list)]
-{
-    //gompher section
-    bloque
-    [//gompher section
-    bloque]...
-}
-```
+#figure(
+  ```go
+  //gompher sections [private(list) | firstprivate(list)]
+  {
+      //gompher section
+      bloque
+      [//gompher section
+      bloque]...
+  }
+  ```,
+  caption: [Gramática para la definición de secciones independientes]
+)
 
 === Ejemplo de Paralelismo Funcional
 
 #figure(
   ```go
-//gompher parallel sections
-{
-    //gompher section
-    { decodificarVideo() }
+  //gompher parallel sections
+  {
+      //gompher section
+      { decodificarVideo() }
 
-    //gompher section
-    { decodificarAudio() }
-}
+      //gompher section
+      { decodificarAudio() }
+  }
   ```,
   caption: [Secciones independientes]
 )
@@ -120,24 +153,27 @@ Ejecuta el bloque asociado en una única goroutine del equipo.
 
 *Sintaxis Formal:*
 
-```go
-//gompher single [private(list) | firstprivate(list)]
-bloque
-```
+#figure(
+  ```go
+  //gompher single [private(list) | firstprivate(list)]
+  bloque
+  ```,
+  caption: [Sintaxis formal de la directiva de ejecución única (single)]
+)
 
 === Ejemplo de Ejecución Única
 
 #figure(
   ```go
-//gompher parallel
-{
-    procesar() // Ejecutado por todos
-    //gompher single
-    {
-        log.Println("Checkpoint") // Ejecutado solo por uno
-    }
-    // Barrera implícita aquí
-}
+  //gompher parallel
+  {
+      procesar() // Ejecutado por todos
+      //gompher single
+      {
+          log.Println("Checkpoint") // Ejecutado solo por uno
+      }
+      // Barrera implícita aquí
+  }
   ```,
   caption: [Ejecución única]
 )
@@ -149,28 +185,31 @@ Ejecuta el bloque asociado únicamente en la goroutine maestra del equipo. A dif
 
 *Sintaxis Formal:*
 
-```go
-//gompher master
-bloque
-```
+#figure(
+  ```go
+  //gompher master
+  bloque
+  ```,
+  caption: [Sintaxis formal de la directiva de ejecución maestra (master)]
+)
 
 === Ejemplo de Ejecución Maestra
 
 #figure(
   ```go
-//gompher parallel
-{
-    trabajoParalelo()
+  //gompher parallel
+  {
+      trabajoParalelo()
 
-    //gompher master
-    {
-        fmt.Println("Soy el maestro, no espero a nadie")
-    }
-    // A diferencia de single, NO hay barrera implícita aquí.
-    // Las otras goroutines continúan inmediatamente.
+      //gompher master
+      {
+          fmt.Println("Soy el maestro, no espero a nadie")
+      }
+      // A diferencia de single, NO hay barrera implícita aquí.
+      // Las otras goroutines continúan inmediatamente.
 
-    masTrabajo()
-}
+      masTrabajo()
+  }
   ```,
   caption: [Uso de master sin barrera]
 )
@@ -182,23 +221,26 @@ Garantiza exclusión mutua para el bloque asociado.
 
 *Sintaxis Formal:*
 
-```go
-//gompher critical [nombre_opcional]
-bloque
-```
+#figure(
+  ```go
+  //gompher critical [nombre_opcional]
+  bloque
+  ```,
+  caption: [Gramática de declaración para regiones críticas]
+)
 
 === Ejemplo de Protección de Recurso
 
 #figure(
   ```go
-var contador int
-//gompher parallel
-{
-    //gompher critical
-    {
-        contador++
-    }
-}
+  var contador int
+  //gompher parallel
+  {
+      //gompher critical
+      {
+          contador++
+      }
+  }
   ```,
   caption: [Uso de critical]
 )
@@ -210,23 +252,26 @@ Especifica un punto de sincronización explícito.
 
 *Sintaxis Formal:*
 
-```go
-//gompher barrier
-```
+#figure(
+  ```go
+  //gompher barrier
+  ```,
+  caption: [Sintaxis de la directiva de barrera explícita]
+)
 
 === Ejemplo de Sincronización Global
 
 #figure(
   ```go
-//gompher parallel
-{
-    inicializarDatosLocales()
+  //gompher parallel
+  {
+      inicializarDatosLocales()
 
-    //gompher barrier
+      //gompher barrier
 
-    // Todos esperan a que la inicialización termine antes de seguir
-    procesarDatos()
-}
+      // Todos esperan a que la inicialización termine antes de seguir
+      procesarDatos()
+  }
   ```,
   caption: [Uso de barrier explícito]
 )
@@ -238,10 +283,13 @@ Garantiza que una expresión simple sobre una variable compartida se ejecute de 
 
 *Sintaxis Formal:*
 
-```go
-//gompher atomic [read | write | update]
-bloque
-```
+#figure(
+  ```go
+  //gompher atomic [read | write | update]
+  bloque
+  ```,
+  caption: [Sintaxis general para operaciones de memoria atómicas]
+)
 === Caso 1: Ejemplo de Update
 
 #figure(
@@ -262,13 +310,13 @@ var contador int
 
 #figure(
   ```go
-var x int64
-var v int64
-//gompher parallel
-{
-    //gompher atomic read
-    v = x
-}
+  var x int64
+  var v int64
+  //gompher parallel
+  {
+      //gompher atomic read
+      v = x
+  }
   ```,
   caption: [Uso de atomic read]
 )
@@ -279,12 +327,12 @@ var v int64
 
 #figure(
   ```go
-var x int64
-//gompher parallel
-{
-    //gompher atomic write
-    x = 42
-}
+  var x int64
+  //gompher parallel
+  {
+      //gompher atomic write
+      x = 42
+  }
   ```,
   caption: [Uso de atomic write]
 )
@@ -296,22 +344,25 @@ Controla cómo se distribuyen las iteraciones de un for paralelo entre las gorou
 
 *Sintaxis Formal:*
 
-```go
-//gompher for schedule(kind[, chunk_size])
-bloque
-```
+#figure(
+  ```go
+  //gompher for schedule(kind[, chunk_size])
+  bloque
+  ```,
+  caption: [Gramática de la cláusula de planificación de iteraciones (schedule)]
+)
 
 === Caso 1: Uso de schedule static
 
 #figure(
   ```go
-//gompher parallel
-{
-    //gompher for schedule(static, 10)
-    for i := 0; i < 100; i++ {
-        trabajo(i)
-    }
-}
+  //gompher parallel
+  {
+      //gompher for schedule(static, 10)
+      for i := 0; i < 100; i++ {
+          trabajo(i)
+      }
+  }
   ```,
   caption: [Uso de schedule static]
 )
@@ -322,13 +373,13 @@ bloque
 
 #figure(
   ```go
-//gompher parallel
-{
-    //gompher for schedule(dynamic, 5)
-    for i := 0; i < 100; i++ {
-        trabajoPesado(i)
-    }
-}
+  //gompher parallel
+  {
+      //gompher for schedule(dynamic, 5)
+      for i := 0; i < 100; i++ {
+          trabajoPesado(i)
+      }
+  }
   ```,
   caption: [Uso de schedule dynamic]
 )

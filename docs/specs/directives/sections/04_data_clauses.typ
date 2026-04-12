@@ -4,18 +4,22 @@ Especifica que cada goroutine tendrá su propia copia local de la variable, inde
 
 *Sintaxis Formal:*
 
-```go
-private(list)
-```
+#figure(
+  ```go
+  private(list)
+  ```,
+  caption: [Sintaxis formal de la cláusula de privatización de memoria (private)]
+)
+
 === Caso 1: En Región Paralela
 
 #figure(
   ```go
-x := 10
-//gompher parallel private(x)
-{
-    x = obtenerID()
-}
+  x := 10
+  //gompher parallel private(x)
+  {
+      x = obtenerID()
+  }
   ```,
   caption: [Uso de private en región paralela]
 )
@@ -23,22 +27,23 @@ x := 10
 *Explicación:* Cada goroutine recibe su propia copia de x sin inicializar, por lo que no hereda el valor 10. Las modificaciones no afectan al valor original ni a las copias de otras goroutines. Al finalizar, x sigue siendo 10.
 
 === Caso 2: En Generación de Tareas
+
 #figure(
   ```go
-resultado := 0
+  resultado := 0
 
-//gompher parallel
-{
-    //gompher single
-    {
-        for i := 0; i < 5; i++ {
-            //gompher task private(resultado)
-            {
-                resultado = calcular(i)
-            }
-        }
-    }
-}
+  //gompher parallel
+  {
+      //gompher single
+      {
+          for i := 0; i < 5; i++ {
+              //gompher task private(resultado)
+              {
+                  resultado = calcular(i)
+              }
+          }
+      }
+  }
   ```,
   caption: [Uso de private en generación de tareas]
 )
@@ -50,18 +55,22 @@ Superconjunto de `private`. Cada goroutine recibe su propia copia local de la va
 
 *Sintaxis Formal:*
 
-```go
-firstprivate(list)
-```
+#figure(
+  ```go
+  firstprivate(list)
+  ```,
+  caption: [Gramática de la cláusula de privatización con inicialización (firstprivate)]
+)
+
 === Caso 1: En Región Paralela
 
 #figure(
   ```go
-x := 10
-//gompher parallel firstprivate(x)
-{
-    x = x + obtenerID()
-}
+  x := 10
+  //gompher parallel firstprivate(x)
+  {
+      x = x + obtenerID()
+  }
   ```,
   caption: [Uso de firstprivate en región paralela]
 )
@@ -72,20 +81,20 @@ x := 10
 
 #figure(
   ```go
-base := 100
+  base := 100
 
-//gompher parallel
-{
-    //gompher single
-    {
-        for i := 0; i < 5; i++ {
-            //gompher task firstprivate(base)
-            {
-                resultado := base + calcular(i)
-            }
-        }
-    }
-}
+  //gompher parallel
+  {
+      //gompher single
+      {
+          for i := 0; i < 5; i++ {
+              //gompher task firstprivate(base)
+              {
+                  resultado := base + calcular(i)
+              }
+          }
+      }
+  }
   ```,
   caption: [Uso de firstprivate en generación de tareas]
 )
@@ -95,15 +104,24 @@ base := 100
 == Cláusula lastprivate
 Superconjunto de `private`. Cada goroutine recibe su propia copia local de la variable, y al finalizar la construcción el valor de la última iteración secuencial se copia al original.
 
+*Sintaxis Formal:*
+
+#figure(
+  ```go
+  lastprivate(list)
+  ```,
+  caption: [Sintaxis de la cláusula de privatización con retención de último valor (lastprivate)]
+)
+
 === Caso 1: En Bucle Paralelo
 
 #figure(
   ```go
-x := 0
-//gompher parallel for lastprivate(x)
-for i := 0; i < 10; i++ {
-    x = i * 2
-}
+  x := 0
+  //gompher parallel for lastprivate(x)
+  for i := 0; i < 10; i++ {
+      x = i * 2
+  }
   ```,
   caption: [Uso de lastprivate en bucle paralelo]
 )
@@ -113,16 +131,16 @@ for i := 0; i < 10; i++ {
 
 #figure(
   ```go
-x := 0
+  x := 0
 
-//gompher parallel sections lastprivate(x)
-{
-    //gompher section
-    { x = 1 }
+  //gompher parallel sections lastprivate(x)
+  {
+      //gompher section
+      { x = 1 }
 
-    //gompher section
-    { x = 2 }
-}
+      //gompher section
+      { x = 2 }
+  }
   ```,
   caption: [Uso de lastprivate en secciones paralelas]
 )
@@ -133,20 +151,25 @@ x := 0
 Declara que una o más variables son compartidas por todas las goroutines. Todas las referencias a la variable apuntan a la misma dirección de memoria. Es el comportamiento por defecto para variables declaradas fuera de la construcción.
 
 *Sintaxis Formal:*
-```go
-shared(list)
-```
+
+#figure(
+  ```go
+  shared(list)
+  ```,
+  caption: [Gramática de la cláusula de compartición de memoria (shared)]
+)
+
 === Caso 1: En Región Paralela
 
 #figure(
   ```go
-x := 0
+  x := 0
 
-//gompher parallel shared(x)
-{
-    //gompher critical
-    { x++ }
-}
+  //gompher parallel shared(x)
+  {
+      //gompher critical
+      { x++ }
+  }
   ```,
   caption: [Uso de shared en región paralela]
 )
@@ -157,16 +180,16 @@ x := 0
 
 #figure(
   ```go
-resultado := 0
+  resultado := 0
 
-//gompher parallel shared(resultado)
-{
-    //gompher single
-    {
-        //gompher task shared(resultado)
-        { resultado = calcular() }
-    }
-}
+  //gompher parallel shared(resultado)
+  {
+      //gompher single
+      {
+          //gompher task shared(resultado)
+          { resultado = calcular() }
+      }
+  }
   ```,
   caption: [Uso de shared en generación de tareas]
 )
@@ -178,14 +201,21 @@ resultado := 0
 Realiza una reducción sobre una variable compartida usando un operador. Cada goroutine trabaja con su propia copia local inicializada con el valor neutro del operador, y al finalizar todas las copias se combinan con el operador para producir el resultado final.
 
 *Sintaxis Formal:*
-```go
-reduction(operador:list)
-```
+
+#figure(
+  ```go
+  reduction(operador:list)
+  ```,
+  caption: [Sintaxis formal de la cláusula de reducción de datos (reduction)]
+)
+
 === Operadores Soportados
 
-#align(center)[
-  #table(
+#figure(
+  table(
     columns: (auto, auto, auto),
+    inset: 10pt,
+    align: horizon,
     [*Operador*], [*Valor inicial*], [*Descripción*],
     [`+`], [`0`], [Suma],
     [`*`], [`1`], [Producto],
@@ -193,20 +223,21 @@ reduction(operador:list)
     [`&&`], [`1`], [AND lógico],
     [`||`], [`0`], [OR lógico],
     [`max`], [`mínimo del tipo`], [Máximo],
-    [`min`], [`mínimo del tipo`], [Mínimo],
-  )
-]
+    [`min`], [`mínimo del tipo`], [Mínimo]
+  ),
+  caption: [Operadores de reducción soportados y sus valores neutros iniciales]
+)
 
 === Caso 1: En Región Paralela
 
 #figure(
   ```go
-suma := 0
+  suma := 0
 
-//gompher parallel for reduction(+:suma)
-for i := 0; i < 10; i++ {
-    suma += i
-}
+  //gompher parallel for reduction(+:suma)
+  for i := 0; i < 10; i++ {
+      suma += i
+  }
   ```,
   caption: [Uso de reduction en región paralela]
 )
@@ -217,18 +248,18 @@ for i := 0; i < 10; i++ {
 
 #figure(
   ```go
-suma := 0
+  suma := 0
 
-//gompher parallel
-{
-    //gompher single
-    {
-        for i := 0; i < 10; i++ {
-            //gompher task reduction(+:suma)
-            { suma += calcular(i) }
-        }
-    }
-}
+  //gompher parallel
+  {
+      //gompher single
+      {
+          for i := 0; i < 10; i++ {
+              //gompher task reduction(+:suma)
+              { suma += calcular(i) }
+          }
+      }
+  }
   ```,
   caption: [Uso de reduction en generación de tareas]
 )
