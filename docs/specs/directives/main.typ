@@ -2,7 +2,6 @@
 #set page(numbering: "1")
 #set heading(numbering: "1.1.")
 #set text(lang: "es")
-
 #show raw.where(block: true): it => {
   block(fill: luma(240), inset: 12pt, radius: 4pt, width: 100%)[
     #let lines = it.text.split("\n")
