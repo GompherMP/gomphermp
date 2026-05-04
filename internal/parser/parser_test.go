@@ -261,12 +261,11 @@ func TestParseDirectiveText_AtomicUpdate(t *testing.T) {
 	if dir.Kind != DirAtomic {
 		t.Errorf("incorrect kind: %q", dir.Kind)
 	}
-	c, ok := dir.Clauses[0].(AtomicTypeClause)
-	if !ok {
-		t.Fatalf("expected AtomicTypeClause, got %T", dir.Clauses[0])
+	if dir.Subtype != "update" {
+		t.Errorf("incorrect subtype: %q", dir.Subtype)
 	}
-	if c.Type != "update" {
-		t.Errorf("incorrect type: %q", c.Type)
+	if len(dir.Clauses) != 0 {
+		t.Errorf("atomic should have no clauses, got %d", len(dir.Clauses))
 	}
 }
 
@@ -275,12 +274,11 @@ func TestParseDirectiveText_AtomicRead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	c, ok := dir.Clauses[0].(AtomicTypeClause)
-	if !ok {
-		t.Fatalf("expected AtomicTypeClause, got %T", dir.Clauses[0])
+	if dir.Subtype != "read" {
+		t.Errorf("incorrect subtype: %q", dir.Subtype)
 	}
-	if c.Type != "read" {
-		t.Errorf("incorrect type: %q", c.Type)
+	if len(dir.Clauses) != 0 {
+		t.Errorf("atomic should have no clauses, got %d", len(dir.Clauses))
 	}
 }
 
@@ -292,12 +290,11 @@ func TestParseDirectiveText_CriticalNamed(t *testing.T) {
 	if dir.Kind != DirCritical {
 		t.Errorf("incorrect kind: %q", dir.Kind)
 	}
-	c, ok := dir.Clauses[0].(CriticalNameClause)
-	if !ok {
-		t.Fatalf("expected CriticalNameClause, got %T", dir.Clauses[0])
+	if dir.Subtype != "mylock" {
+		t.Errorf("incorrect subtype: %q", dir.Subtype)
 	}
-	if c.Name != "mylock" {
-		t.Errorf("incorrect name: %q", c.Name)
+	if len(dir.Clauses) != 0 {
+		t.Errorf("critical should have no clauses, got %d", len(dir.Clauses))
 	}
 }
 
@@ -309,8 +306,11 @@ func TestParseDirectiveText_CriticalAnonymous(t *testing.T) {
 	if dir.Kind != DirCritical {
 		t.Errorf("incorrect kind: %q", dir.Kind)
 	}
+	if dir.Subtype != "" {
+		t.Errorf("anonymous critical should have empty subtype, got %q", dir.Subtype)
+	}
 	if len(dir.Clauses) != 0 {
-		t.Errorf("anonymous critical should have no clauses, got %d", len(dir.Clauses))
+		t.Errorf("critical should have no clauses, got %d", len(dir.Clauses))
 	}
 }
 
@@ -318,6 +318,41 @@ func TestParseDirectiveText_Unknown(t *testing.T) {
 	_, err := parseDirectiveText("unknowndirective", 0, 1)
 	if err == nil {
 		t.Fatal("expected error for unknown directive")
+	}
+}
+
+func TestParseDirectiveText_BarrierRejectsClause(t *testing.T) {
+	_, err := parseDirectiveText("barrier private(x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: barrier accepts no clauses")
+	}
+}
+
+func TestParseDirectiveText_MasterRejectsClause(t *testing.T) {
+	_, err := parseDirectiveText("master shared(y)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: master accepts no clauses")
+	}
+}
+
+func TestParseDirectiveText_SectionRejectsClause(t *testing.T) {
+	_, err := parseDirectiveText("section private(x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: section accepts no clauses")
+	}
+}
+
+func TestParseDirectiveText_ForRejectsReduction(t *testing.T) {
+	_, err := parseDirectiveText("for reduction(+:x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: for does not accept reduction")
+	}
+}
+
+func TestParseDirectiveText_SingleRejectsShared(t *testing.T) {
+	_, err := parseDirectiveText("single shared(x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: single does not accept shared")
 	}
 }
 
@@ -377,9 +412,8 @@ func main() {
 
 	//gompher barrier
 
-	//gompher parallel reduction(+:suma)
-	{
-		suma += calcular()
+	//gompher parallel for reduction(+:suma)
+	for i := 0; i < 10; i++ {
 	}
 }`
 	result, err := Parse(src)
@@ -395,7 +429,7 @@ func main() {
 	if result.Nodes[1].Directive.Kind != DirBarrier {
 		t.Errorf("node 1: incorrect kind: %q", result.Nodes[1].Directive.Kind)
 	}
-	if result.Nodes[2].Directive.Kind != DirParallel {
+	if result.Nodes[2].Directive.Kind != DirParallelFor {
 		t.Errorf("node 2: incorrect kind: %q", result.Nodes[2].Directive.Kind)
 	}
 }
@@ -409,5 +443,170 @@ func main() {
 	_, err := Parse(src)
 	if err == nil {
 		t.Fatal("expected error for invalid Go syntax")
+	}
+}
+
+func TestParse_For(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel
+	{
+		//gompher for
+		for i := 0; i < 100; i++ {
+		}
+	}
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 2 {
+		t.Fatalf("expected 2 nodes, got %d", len(result.Nodes))
+	}
+	if result.Nodes[0].Directive.Kind != DirParallel {
+		t.Errorf("node 0: incorrect kind: %q", result.Nodes[0].Directive.Kind)
+	}
+	if result.Nodes[1].Directive.Kind != DirFor {
+		t.Errorf("node 1: incorrect kind: %q", result.Nodes[1].Directive.Kind)
+	}
+}
+
+func TestParse_Single(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel
+	{
+		//gompher single
+		{
+			log.Println("once")
+		}
+	}
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 2 {
+		t.Fatalf("expected 2 nodes, got %d", len(result.Nodes))
+	}
+	if result.Nodes[1].Directive.Kind != DirSingle {
+		t.Errorf("node 1: incorrect kind: %q", result.Nodes[1].Directive.Kind)
+	}
+}
+
+func TestParse_Master(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel
+	{
+		//gompher master
+		{
+			fmt.Println("master only")
+		}
+	}
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 2 {
+		t.Fatalf("expected 2 nodes, got %d", len(result.Nodes))
+	}
+	if result.Nodes[1].Directive.Kind != DirMaster {
+		t.Errorf("node 1: incorrect kind: %q", result.Nodes[1].Directive.Kind)
+	}
+}
+
+func TestParse_Critical(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel
+	{
+		//gompher critical
+		{
+			contador++
+		}
+	}
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 2 {
+		t.Fatalf("expected 2 nodes, got %d", len(result.Nodes))
+	}
+	if result.Nodes[1].Directive.Kind != DirCritical {
+		t.Errorf("node 1: incorrect kind: %q", result.Nodes[1].Directive.Kind)
+	}
+}
+
+func TestParse_Atomic(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel
+	{
+		//gompher atomic update
+		contador++
+	}
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 2 {
+		t.Fatalf("expected 2 nodes, got %d", len(result.Nodes))
+	}
+	if result.Nodes[1].Directive.Kind != DirAtomic {
+		t.Errorf("incorrect kind: %q", result.Nodes[1].Directive.Kind)
+	}
+	if result.Nodes[1].Directive.Subtype != "update" {
+		t.Errorf("incorrect subtype: %q", result.Nodes[1].Directive.Subtype)
+	}
+}
+
+func TestParse_Sections(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel
+	{
+		//gompher sections
+		{
+			//gompher section
+			{
+				decodificarVideo()
+			}
+
+			//gompher section
+			{
+				decodificarAudio()
+			}
+		}
+	}
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// parallel + sections + section + section = 4 nodes
+	if len(result.Nodes) != 4 {
+		t.Fatalf("expected 4 nodes, got %d", len(result.Nodes))
+	}
+	if result.Nodes[0].Directive.Kind != DirParallel {
+		t.Errorf("node 0: incorrect kind: %q", result.Nodes[0].Directive.Kind)
+	}
+	if result.Nodes[1].Directive.Kind != DirSections {
+		t.Errorf("node 1: incorrect kind: %q", result.Nodes[1].Directive.Kind)
+	}
+	if result.Nodes[2].Directive.Kind != DirSection {
+		t.Errorf("node 2: incorrect kind: %q", result.Nodes[2].Directive.Kind)
+	}
+	if result.Nodes[3].Directive.Kind != DirSection {
+		t.Errorf("node 3: incorrect kind: %q", result.Nodes[3].Directive.Kind)
 	}
 }

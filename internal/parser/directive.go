@@ -27,6 +27,7 @@ const (
 type GompherDirective struct {
 	Kind    DirectiveKind
 	Clauses []Clause
+	Subtype string
 	Node    ast.Node
 	Pos     token.Pos
 	Line    int

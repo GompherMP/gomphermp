@@ -136,24 +136,27 @@ func parseDirectiveText(text string, pos token.Pos, line int) (*GompherDirective
 	}
 
 	var clauses []Clause
+	var subtype string
 
 	switch kind {
 	case DirAtomic:
+		// "read" | "write" | "update" — stored in Subtype, not Clauses
 		if rest != "" {
 			valid := map[string]bool{"read": true, "write": true, "update": true}
 			if !valid[rest] {
 				return nil, fmt.Errorf("invalid atomic type: %q, expected read, write or update", rest)
 			}
-			clauses = []Clause{AtomicTypeClause{Type: rest}}
+			subtype = rest
 		}
 
 	case DirCritical:
+		// optional lock name — stored in Subtype, not Clauses
 		if rest != "" {
 			name := strings.Trim(rest, "()")
 			if name == "" {
 				return nil, fmt.Errorf("critical name cannot be empty")
 			}
-			clauses = []Clause{CriticalNameClause{Name: name}}
+			subtype = name
 		}
 
 	default:
@@ -163,9 +166,15 @@ func parseDirectiveText(text string, pos token.Pos, line int) (*GompherDirective
 		}
 	}
 
+	if err := validateClauses(kind, clauses); err != nil {
+		return nil, err
+	}
+
 	return &GompherDirective{
 		Kind:    kind,
 		Clauses: clauses,
+		Subtype: subtype,
+		Node:    ast.Node(nil),
 		Pos:     pos,
 		Line:    line,
 	}, nil
@@ -206,4 +215,47 @@ func extractKind(text string) (DirectiveKind, string, error) {
 	}
 
 	return "", "", fmt.Errorf("unknown directive: %q", text)
+}
+
+// validClauses defines which clause kinds are legal for each directive.
+// directives not in this map accept no clauses.
+var validClauses = map[DirectiveKind][]ClauseKind{
+	DirParallel:    {ClausePrivate, ClauseFirstPrivate, ClauseShared},
+	DirFor:         {ClausePrivate, ClauseFirstPrivate, ClauseSchedule},
+	DirParallelFor: {ClausePrivate, ClauseFirstPrivate, ClauseLastPrivate, ClauseShared, ClauseReduction, ClauseSchedule},
+	DirSections:    {ClausePrivate, ClauseFirstPrivate, ClauseLastPrivate, ClauseReduction},
+	DirSingle:      {ClausePrivate, ClauseFirstPrivate},
+	DirTask:        {ClausePrivate, ClauseFirstPrivate},
+	DirTaskloop:    {ClausePrivate, ClauseFirstPrivate, ClauseGrainsize},
+	// these accept no clauses — not in map
+	// DirSection, DirMaster, DirBarrier, DirAtomic, DirCritical, DirTaskwait, DirTaskgroup
+}
+
+func validateClauses(kind DirectiveKind, clauses []Clause) error {
+	allowed, exists := validClauses[kind]
+
+	// directives not in the map accept no clauses at all
+	if !exists {
+		if len(clauses) > 0 {
+			return fmt.Errorf("directive %q accepts no clauses", kind)
+		}
+		return nil
+	}
+
+	// check each clause is in the allowed list
+	for _, clause := range clauses {
+		ck := clause.clauseKind()
+		found := false
+		for _, a := range allowed {
+			if ck == a {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("directive %q does not accept clause %q", kind, ck)
+		}
+	}
+
+	return nil
 }
