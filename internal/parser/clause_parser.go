@@ -6,12 +6,27 @@ import (
 	"strings"
 )
 
+// Package-level compiled regexes for clause parsing.
+// Compiled once at startup for performance. Each regex anchors to the start (^).
 var (
-	reVarList   = regexp.MustCompile(`^(private|firstprivate|lastprivate|shared)\(([^)]+)\)`)
+	// reVarList covers: private(x, y), firstprivate(x), lastprivate(x), shared(x, y)
+	reVarList = regexp.MustCompile(`^(private|firstprivate|lastprivate|shared)\(([^)]+)\)`)
+
+	// reReduction covers: reduction(+:suma), reduction(max:val)
 	reReduction = regexp.MustCompile(`^reduction\(([+\-*]|&&|\|\||max|min):([^)]+)\)`)
-	reSchedule  = regexp.MustCompile(`^schedule\((static|dynamic)(?:,\s*([^)]+))?\)`)
+
+	// reSchedule covers: schedule(static), schedule(dynamic, 10)
+	reSchedule = regexp.MustCompile(`^schedule\((static|dynamic)(?:,\s*([^)]+))?\)`)
+
+	// reDepend covers: depend(in:x, y), depend(out:buff)
+	reDepend = regexp.MustCompile(`^depend\((in|out|inout):([^)]+)\)`)
+
+	// reGrainsize covers: grainsize(5)
+	reGrainsize = regexp.MustCompile(`^grainsize\(([^)]+)\)`)
 )
 
+// extractClauses parses all clauses from a directive string.
+// It iteratively consumes the text from left to right until nothing remains.
 func extractClauses(text string) ([]Clause, error) {
 	if text == "" {
 		return nil, nil
@@ -32,6 +47,8 @@ func extractClauses(text string) ([]Clause, error) {
 	return clauses, nil
 }
 
+// parseNextClause parses the first clause found at the start of the text.
+// Returns the parsed Clause, the remaining unparsed text, and any error.
 func parseNextClause(text string) (Clause, string, error) {
 	if m := reVarList.FindStringSubmatchIndex(text); m != nil {
 		matched := text[m[0]:m[1]]
@@ -70,9 +87,31 @@ func parseNextClause(text string) (Clause, string, error) {
 		return ScheduleClause{Kind: kind, Chunk: chunk}, rest, nil
 	}
 
+	if m := reDepend.FindStringSubmatchIndex(text); m != nil {
+		matched := text[m[0]:m[1]]
+		rest := text[m[1]:]
+
+		parts := reDepend.FindStringSubmatch(matched)
+		depType := parts[1]
+		vars := splitVars(parts[2])
+
+		return DependClause{DepType: depType, Vars: vars}, rest, nil
+	}
+
+	if m := reGrainsize.FindStringSubmatchIndex(text); m != nil {
+		matched := text[m[0]:m[1]]
+		rest := text[m[1]:]
+
+		parts := reGrainsize.FindStringSubmatch(matched)
+		size := strings.TrimSpace(parts[1])
+
+		return GrainsizeClause{Size: size}, rest, nil
+	}
+
 	return nil, "", fmt.Errorf("unknown clause: %q", text)
 }
 
+// makeVarListClause maps a string kind to its corresponding concrete Clause type.
 func makeVarListClause(kind string, vars []string) (Clause, error) {
 	switch kind {
 	case "private":
@@ -88,6 +127,8 @@ func makeVarListClause(kind string, vars []string) (Clause, error) {
 	}
 }
 
+// splitVars splits a comma-separated variable string into a trimmed slice.
+// Example: "x, y,  z" -> []string{"x", "y", "z"}
 func splitVars(s string) []string {
 	parts := strings.Split(s, ",")
 	var vars []string
