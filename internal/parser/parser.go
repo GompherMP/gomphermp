@@ -30,7 +30,7 @@ func Parse(src string) (*ParseResult, error) {
 
 	file, err := parser.ParseFile(fset, "", src, parser.ParseComments)
 	if err != nil {
-		return nil, fmt.Errorf("Go sintaxis error: %w", err)
+		return nil, fmt.Errorf("Go syntax error: %w", err)
 	}
 
 	nodes, err := extractAnnotatedNodes(fset, file)
@@ -127,90 +127,95 @@ func getDirectiveLine(dir Directive) int {
 	}
 }
 
-// extractAnnotatedNodes maps isolated //gompher comments to their adjacent Go AST nodes.
-// It utilizes a 3-line lookback heuristic to bind comments to execution blocks.
+// extractAnnotatedNodes maps //gompher directives to their corresponding Go AST nodes.
+// It uses ast.CommentMap from Go's standard library.
+// For each AST node, we check if any //gompher comment is associated with it.
+// Directives without an associated node (barrier, taskwait) are added separately.
 func extractAnnotatedNodes(fset *token.FileSet, file *ast.File) ([]AnnotatedNode, error) {
+	// CommentMap associates each ast.Node with the comments that document it.
+	// This handles all the edge cases the manual lookback approach struggled with.
+	cmap := ast.NewCommentMap(fset, file, file.Comments)
+
+	// Track which directives we've matched so we can detect orphan barriers/taskwaits.
+	matchedComments := make(map[*ast.Comment]bool)
+
 	var result []AnnotatedNode
+	var firstErr error
 
-	// Map line number -> parsed directive for fast lookup during AST traversal.
-	directiveByLine := make(map[int]Directive)
-
-	// 1. Scan all comments to find and parse standalone GompherMP directives.
-	for _, cg := range file.Comments {
-		for _, c := range cg.List {
-			if !strings.HasPrefix(c.Text, "//gompher ") && c.Text != "//gompher" {
-				continue
-			}
-
-			line := fset.Position(c.Pos()).Line
-			text := strings.TrimSpace(strings.TrimPrefix(c.Text, "//gompher"))
-
-			directive, err := parseDirectiveText(text, c.Pos(), line)
-			if err != nil {
-				return nil, fmt.Errorf("line %d: %w", line, err)
-			}
-
-			directiveByLine[line] = directive
-		}
-	}
-
-	// Directives that act as pure synchronization points and do not wrap code blocks.
-	noNodeDirectives := map[DirectiveKind]bool{
-		DirBarrier:  true,
-		DirTaskwait: true,
-	}
-
-	matched := make(map[int]bool)
-
-	// 2. Traverse the Go AST and apply the lookback algorithm.
+	// Walk the AST. For each node, check if any //gompher comment is mapped to it.
 	ast.Inspect(file, func(n ast.Node) bool {
-		if n == nil {
+		if n == nil || firstErr != nil {
 			return false
 		}
 
-		block, ok := n.(*ast.BlockStmt)
-		if !ok {
-			return true
-		}
-
-		// Look up to 3 lines above the current block statement to find its directive.
-		for _, stmt := range block.List {
-			stmtLine := fset.Position(stmt.Pos()).Line
-
-			for lookback := 1; lookback <= 3; lookback++ {
-				dir, exists := directiveByLine[stmtLine-lookback]
-				if !exists {
+		for _, cg := range cmap[n] {
+			for _, c := range cg.List {
+				if !isGompherComment(c.Text) {
 					continue
 				}
-				if matched[stmtLine-lookback] {
-					break
+
+				directive, err := parseGompherComment(fset, c)
+				if err != nil {
+					firstErr = err
+					return false
 				}
-				matched[stmtLine-lookback] = true
+
+				matchedComments[c] = true
 				result = append(result, AnnotatedNode{
-					Directive: setNode(dir, stmt),
+					Directive: setNode(directive, n),
 				})
-				break
 			}
 		}
-
 		return true
 	})
 
-	// 3. Append contextless directives (like barrier) that were not matched to a block.
-	for line, dir := range directiveByLine {
-		if noNodeDirectives[dir.directiveKind()] && !matched[line] {
-			result = append(result, AnnotatedNode{
-				Directive: dir,
-			})
+	if firstErr != nil {
+		return nil, firstErr
+	}
+
+	// Add directives that have no associated node (barrier, taskwait).
+	// These are //gompher comments not associated with any AST node by CommentMap.
+	for _, cg := range file.Comments {
+		for _, c := range cg.List {
+			if !isGompherComment(c.Text) || matchedComments[c] {
+				continue
+			}
+
+			directive, err := parseGompherComment(fset, c)
+			if err != nil {
+				return nil, err
+			}
+
+			kind := directive.directiveKind()
+			if kind == DirBarrier || kind == DirTaskwait {
+				result = append(result, AnnotatedNode{Directive: directive})
+			}
 		}
 	}
 
-	// 4. Ensure top-to-bottom execution order is preserved.
+	// Preserve source order — important for the transformer.
 	sort.Slice(result, func(i, j int) bool {
 		return getDirectiveLine(result[i].Directive) < getDirectiveLine(result[j].Directive)
 	})
 
 	return result, nil
+}
+
+// isGompherComment reports whether a comment is a GompherMP directive.
+func isGompherComment(text string) bool {
+	return strings.HasPrefix(text, "//gompher ") || text == "//gompher"
+}
+
+// parseGompherComment extracts and parses a //gompher directive from a comment.
+func parseGompherComment(fset *token.FileSet, c *ast.Comment) (Directive, error) {
+	line := fset.Position(c.Pos()).Line
+	text := strings.TrimSpace(strings.TrimPrefix(c.Text, "//gompher"))
+
+	directive, err := parseDirectiveText(text, c.Pos(), line)
+	if err != nil {
+		return nil, fmt.Errorf("line %d: %w", line, err)
+	}
+	return directive, nil
 }
 
 // parseDirectiveText translates a raw comment string into a strongly-typed Directive struct.
@@ -293,13 +298,15 @@ func parseDirectiveText(text string, p token.Pos, line int) (Directive, error) {
 	case DirCritical:
 		name := ""
 		if rest != "" {
+			if !strings.HasPrefix(rest, "(") || !strings.HasSuffix(rest, ")") {
+				return nil, fmt.Errorf("critical name must use parentheses: critical(name)")
+			}
 			name = strings.Trim(rest, "()")
 			if name == "" {
 				return nil, fmt.Errorf("critical name cannot be empty")
 			}
 		}
 		return CriticalDirective{Name: name, pos: srcPos}, nil
-
 	case DirBarrier:
 		if rest != "" {
 			return nil, fmt.Errorf("directive %q accepts no clauses", kind)
@@ -402,7 +409,7 @@ var validClauses = map[DirectiveKind][]ClauseKind{
 	DirParallelFor: {ClausePrivate, ClauseFirstPrivate, ClauseLastPrivate, ClauseShared, ClauseReduction, ClauseSchedule},
 	DirSections:    {ClausePrivate, ClauseFirstPrivate, ClauseLastPrivate, ClauseReduction},
 	DirSingle:      {ClausePrivate, ClauseFirstPrivate},
-	DirTask:        {ClausePrivate, ClauseFirstPrivate, ClauseDepend, ClauseReduction},
+	DirTask:        {ClausePrivate, ClauseFirstPrivate, ClauseDepend},
 	DirTaskloop:    {ClausePrivate, ClauseFirstPrivate, ClauseGrainsize},
 	// Contextless or sync directives accept no clauses:
 	// DirSection, DirMaster, DirBarrier, DirAtomic, DirCritical, DirTaskwait, DirTaskgroup

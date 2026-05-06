@@ -140,7 +140,7 @@ func (d AtomicDirective) directiveKind() DirectiveKind { return DirAtomic }
 // TaskDirective represents //gompher task.
 // It defines an explicit, asynchronous unit of work to be processed by a task pool.
 type TaskDirective struct {
-	Clauses []Clause // private, firstprivate, depend, reduction
+	Clauses []Clause // private, firstprivate, depend
 	Node    ast.Node // *ast.BlockStmt
 	pos
 }

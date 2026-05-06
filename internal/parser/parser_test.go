@@ -194,20 +194,6 @@ func TestExtractClauses_Depend(t *testing.T) {
 	}
 }
 
-func TestExtractClauses_Grainsize(t *testing.T) {
-	clauses, err := extractClauses("grainsize(5)")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	c, ok := clauses[0].(GrainsizeClause)
-	if !ok {
-		t.Fatalf("expected GrainsizeClause, got %T", clauses[0])
-	}
-	if c.Size != "5" {
-		t.Errorf("incorrect size: %q", c.Size)
-	}
-}
-
 func TestExtractClauses_Multiple(t *testing.T) {
 	clauses, err := extractClauses("schedule(static, 10) private(x, y)")
 	if err != nil {
@@ -238,6 +224,65 @@ func TestExtractClauses_Unknown(t *testing.T) {
 	_, err := extractClauses("unknownclause(x)")
 	if err == nil {
 		t.Fatal("expected error for unknown clause")
+	}
+}
+
+func TestExtractClauses_Depend_In(t *testing.T) {
+	clauses, err := extractClauses("depend(in:x)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	c, ok := clauses[0].(DependClause)
+	if !ok {
+		t.Fatalf("expected DependClause, got %T", clauses[0])
+	}
+	if c.DepType != "in" {
+		t.Errorf("incorrect deptype: %q", c.DepType)
+	}
+	if len(c.Vars) != 1 || c.Vars[0] != "x" {
+		t.Errorf("incorrect vars: %v", c.Vars)
+	}
+}
+
+func TestExtractClauses_Depend_Out(t *testing.T) {
+	clauses, err := extractClauses("depend(out:buff)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	c, ok := clauses[0].(DependClause)
+	if !ok {
+		t.Fatalf("expected DependClause, got %T", clauses[0])
+	}
+	if c.DepType != "out" {
+		t.Errorf("incorrect deptype: %q", c.DepType)
+	}
+}
+
+func TestExtractClauses_Depend_Inout(t *testing.T) {
+	clauses, err := extractClauses("depend(inout:buff)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	c, ok := clauses[0].(DependClause)
+	if !ok {
+		t.Fatalf("expected DependClause, got %T", clauses[0])
+	}
+	if c.DepType != "inout" {
+		t.Errorf("incorrect deptype: %q", c.DepType)
+	}
+}
+
+func TestExtractClauses_Grainsize(t *testing.T) {
+	clauses, err := extractClauses("grainsize(5)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	c, ok := clauses[0].(GrainsizeClause)
+	if !ok {
+		t.Fatalf("expected GrainsizeClause, got %T", clauses[0])
+	}
+	if c.Size != "5" {
+		t.Errorf("incorrect size: %q", c.Size)
 	}
 }
 
