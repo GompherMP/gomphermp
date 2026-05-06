@@ -1,0 +1,734 @@
+package parser
+
+import (
+	"testing"
+)
+
+// ---------------------------------------------
+// LEVEL 1: extractClauses() in isolation
+// ---------------------------------------------
+
+func TestExtractClauses_Private(t *testing.T) {
+	clauses, err := extractClauses("private(x, y)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(clauses) != 1 {
+		t.Fatalf("expected 1 clause, got %d", len(clauses))
+	}
+	c, ok := clauses[0].(PrivateClause)
+	if !ok {
+		t.Fatalf("expected PrivateClause, got %T", clauses[0])
+	}
+	if len(c.Vars) != 2 || c.Vars[0] != "x" || c.Vars[1] != "y" {
+		t.Errorf("incorrect vars: %v", c.Vars)
+	}
+}
+
+func TestExtractClauses_FirstPrivate(t *testing.T) {
+	clauses, err := extractClauses("firstprivate(base)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	c, ok := clauses[0].(FirstPrivateClause)
+	if !ok {
+		t.Fatalf("expected FirstPrivateClause, got %T", clauses[0])
+	}
+	if len(c.Vars) != 1 || c.Vars[0] != "base" {
+		t.Errorf("incorrect vars: %v", c.Vars)
+	}
+}
+
+func TestExtractClauses_LastPrivate(t *testing.T) {
+	clauses, err := extractClauses("lastprivate(x)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	c, ok := clauses[0].(LastPrivateClause)
+	if !ok {
+		t.Fatalf("expected LastPrivateClause, got %T", clauses[0])
+	}
+	if len(c.Vars) != 1 || c.Vars[0] != "x" {
+		t.Errorf("incorrect vars: %v", c.Vars)
+	}
+}
+
+func TestExtractClauses_Shared(t *testing.T) {
+	clauses, err := extractClauses("shared(global, contador)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	c, ok := clauses[0].(SharedClause)
+	if !ok {
+		t.Fatalf("expected SharedClause, got %T", clauses[0])
+	}
+	if len(c.Vars) != 2 {
+		t.Errorf("incorrect vars: %v", c.Vars)
+	}
+}
+
+func TestExtractClauses_Reduction_Sum(t *testing.T) {
+	clauses, err := extractClauses("reduction(+:suma)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	c, ok := clauses[0].(ReductionClause)
+	if !ok {
+		t.Fatalf("expected ReductionClause, got %T", clauses[0])
+	}
+	if c.Operator != "+" {
+		t.Errorf("incorrect operator: %q", c.Operator)
+	}
+	if len(c.Vars) != 1 || c.Vars[0] != "suma" {
+		t.Errorf("incorrect vars: %v", c.Vars)
+	}
+}
+
+func TestExtractClauses_Reduction_And(t *testing.T) {
+	clauses, err := extractClauses("reduction(&&:result)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	c, ok := clauses[0].(ReductionClause)
+	if !ok {
+		t.Fatalf("expected ReductionClause, got %T", clauses[0])
+	}
+	if c.Operator != "&&" {
+		t.Errorf("incorrect operator: %q", c.Operator)
+	}
+}
+
+func TestExtractClauses_Reduction_Max(t *testing.T) {
+	clauses, err := extractClauses("reduction(max:result)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	c, ok := clauses[0].(ReductionClause)
+	if !ok {
+		t.Fatalf("expected ReductionClause, got %T", clauses[0])
+	}
+	if c.Operator != "max" {
+		t.Errorf("incorrect operator: %q", c.Operator)
+	}
+}
+
+func TestExtractClauses_ScheduleStatic(t *testing.T) {
+	clauses, err := extractClauses("schedule(static, 10)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	c, ok := clauses[0].(ScheduleClause)
+	if !ok {
+		t.Fatalf("expected ScheduleClause, got %T", clauses[0])
+	}
+	if c.Kind != "static" {
+		t.Errorf("incorrect kind: %q", c.Kind)
+	}
+	if c.Chunk != "10" {
+		t.Errorf("incorrect chunk: %q", c.Chunk)
+	}
+}
+
+func TestExtractClauses_ScheduleStaticNoChunk(t *testing.T) {
+	clauses, err := extractClauses("schedule(static)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	c, ok := clauses[0].(ScheduleClause)
+	if !ok {
+		t.Fatalf("expected ScheduleClause, got %T", clauses[0])
+	}
+	if c.Kind != "static" {
+		t.Errorf("incorrect kind: %q", c.Kind)
+	}
+	if c.Chunk != "" {
+		t.Errorf("chunk should be empty, got %q", c.Chunk)
+	}
+}
+
+func TestExtractClauses_ScheduleDynamic(t *testing.T) {
+	clauses, err := extractClauses("schedule(dynamic, 5)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	c, ok := clauses[0].(ScheduleClause)
+	if !ok {
+		t.Fatalf("expected ScheduleClause, got %T", clauses[0])
+	}
+	if c.Kind != "dynamic" {
+		t.Errorf("incorrect kind: %q", c.Kind)
+	}
+	if c.Chunk != "5" {
+		t.Errorf("incorrect chunk: %q", c.Chunk)
+	}
+}
+
+func TestExtractClauses_ScheduleDynamicNoChunk(t *testing.T) {
+	clauses, err := extractClauses("schedule(dynamic)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	c, ok := clauses[0].(ScheduleClause)
+	if !ok {
+		t.Fatalf("expected ScheduleClause, got %T", clauses[0])
+	}
+	if c.Chunk != "" {
+		t.Errorf("chunk should be empty, got %q", c.Chunk)
+	}
+}
+
+func TestExtractClauses_Depend(t *testing.T) {
+	clauses, err := extractClauses("depend(in:x, y)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	c, ok := clauses[0].(DependClause)
+	if !ok {
+		t.Fatalf("expected DependClause, got %T", clauses[0])
+	}
+	if c.DepType != "in" {
+		t.Errorf("incorrect dependency type: %q", c.DepType)
+	}
+	if len(c.Vars) != 2 || c.Vars[0] != "x" || c.Vars[1] != "y" {
+		t.Errorf("incorrect vars: %v", c.Vars)
+	}
+}
+
+func TestExtractClauses_Multiple(t *testing.T) {
+	clauses, err := extractClauses("schedule(static, 10) private(x, y)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(clauses) != 2 {
+		t.Fatalf("expected 2 clauses, got %d", len(clauses))
+	}
+	if _, ok := clauses[0].(ScheduleClause); !ok {
+		t.Errorf("first clause should be ScheduleClause, got %T", clauses[0])
+	}
+	if _, ok := clauses[1].(PrivateClause); !ok {
+		t.Errorf("second clause should be PrivateClause, got %T", clauses[1])
+	}
+}
+
+func TestExtractClauses_Empty(t *testing.T) {
+	clauses, err := extractClauses("")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(clauses) != 0 {
+		t.Errorf("expected 0 clauses, got %d", len(clauses))
+	}
+}
+
+func TestExtractClauses_Unknown(t *testing.T) {
+	_, err := extractClauses("unknownclause(x)")
+	if err == nil {
+		t.Fatal("expected error for unknown clause")
+	}
+}
+
+func TestExtractClauses_Depend_In(t *testing.T) {
+	clauses, err := extractClauses("depend(in:x)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	c, ok := clauses[0].(DependClause)
+	if !ok {
+		t.Fatalf("expected DependClause, got %T", clauses[0])
+	}
+	if c.DepType != "in" {
+		t.Errorf("incorrect deptype: %q", c.DepType)
+	}
+	if len(c.Vars) != 1 || c.Vars[0] != "x" {
+		t.Errorf("incorrect vars: %v", c.Vars)
+	}
+}
+
+func TestExtractClauses_Depend_Out(t *testing.T) {
+	clauses, err := extractClauses("depend(out:buff)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	c, ok := clauses[0].(DependClause)
+	if !ok {
+		t.Fatalf("expected DependClause, got %T", clauses[0])
+	}
+	if c.DepType != "out" {
+		t.Errorf("incorrect deptype: %q", c.DepType)
+	}
+}
+
+func TestExtractClauses_Depend_Inout(t *testing.T) {
+	clauses, err := extractClauses("depend(inout:buff)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	c, ok := clauses[0].(DependClause)
+	if !ok {
+		t.Fatalf("expected DependClause, got %T", clauses[0])
+	}
+	if c.DepType != "inout" {
+		t.Errorf("incorrect deptype: %q", c.DepType)
+	}
+}
+
+func TestExtractClauses_Grainsize(t *testing.T) {
+	clauses, err := extractClauses("grainsize(5)")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	c, ok := clauses[0].(GrainsizeClause)
+	if !ok {
+		t.Fatalf("expected GrainsizeClause, got %T", clauses[0])
+	}
+	if c.Size != "5" {
+		t.Errorf("incorrect size: %q", c.Size)
+	}
+}
+
+// ---------------------------------------------
+// LEVEL 2: parseDirectiveText() combined
+// ---------------------------------------------
+
+func TestParseDirectiveText_ParallelFor(t *testing.T) {
+	dir, err := parseDirectiveText("parallel for schedule(static, 10) private(x)", 0, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	d, ok := dir.(ParallelForDirective)
+	if !ok {
+		t.Fatalf("expected ParallelForDirective, got %T", dir)
+	}
+	if len(d.Clauses) != 2 {
+		t.Errorf("expected 2 clauses, got %d", len(d.Clauses))
+	}
+}
+
+func TestParseDirectiveText_Parallel(t *testing.T) {
+	dir, err := parseDirectiveText("parallel shared(global) private(local)", 0, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	d, ok := dir.(ParallelDirective)
+	if !ok {
+		t.Fatalf("expected ParallelDirective, got %T", dir)
+	}
+	if len(d.Clauses) != 2 {
+		t.Errorf("expected 2 clauses, got %d", len(d.Clauses))
+	}
+}
+
+func TestParseDirectiveText_Barrier(t *testing.T) {
+	dir, err := parseDirectiveText("barrier", 0, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, ok := dir.(BarrierDirective); !ok {
+		t.Fatalf("expected BarrierDirective, got %T", dir)
+	}
+}
+
+func TestParseDirectiveText_AtomicUpdate(t *testing.T) {
+	dir, err := parseDirectiveText("atomic update", 0, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	d, ok := dir.(AtomicDirective)
+	if !ok {
+		t.Fatalf("expected AtomicDirective, got %T", dir)
+	}
+	if d.Mode != "update" {
+		t.Errorf("incorrect mode: %q", d.Mode)
+	}
+}
+
+func TestParseDirectiveText_AtomicRead(t *testing.T) {
+	dir, err := parseDirectiveText("atomic read", 0, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	d, ok := dir.(AtomicDirective)
+	if !ok {
+		t.Fatalf("expected AtomicDirective, got %T", dir)
+	}
+	if d.Mode != "read" {
+		t.Errorf("incorrect mode: %q", d.Mode)
+	}
+}
+
+func TestParseDirectiveText_CriticalNamed(t *testing.T) {
+	dir, err := parseDirectiveText("critical(mylock)", 0, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	d, ok := dir.(CriticalDirective)
+	if !ok {
+		t.Fatalf("expected CriticalDirective, got %T", dir)
+	}
+	if d.Name != "mylock" {
+		t.Errorf("incorrect name: %q", d.Name)
+	}
+}
+
+func TestParseDirectiveText_CriticalAnonymous(t *testing.T) {
+	dir, err := parseDirectiveText("critical", 0, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	d, ok := dir.(CriticalDirective)
+	if !ok {
+		t.Fatalf("expected CriticalDirective, got %T", dir)
+	}
+	if d.Name != "" {
+		t.Errorf("anonymous critical should have empty name, got %q", d.Name)
+	}
+}
+
+func TestParseDirectiveText_Unknown(t *testing.T) {
+	_, err := parseDirectiveText("unknowndirective", 0, 1)
+	if err == nil {
+		t.Fatal("expected error for unknown directive")
+	}
+}
+
+func TestParseDirectiveText_BarrierRejectsClause(t *testing.T) {
+	_, err := parseDirectiveText("barrier private(x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: barrier accepts no clauses")
+	}
+}
+
+func TestParseDirectiveText_MasterRejectsClause(t *testing.T) {
+	_, err := parseDirectiveText("master shared(y)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: master accepts no clauses")
+	}
+}
+
+func TestParseDirectiveText_SectionRejectsClause(t *testing.T) {
+	_, err := parseDirectiveText("section private(x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: section accepts no clauses")
+	}
+}
+
+func TestParseDirectiveText_ForRejectsReduction(t *testing.T) {
+	_, err := parseDirectiveText("for reduction(+:x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: for does not accept reduction")
+	}
+}
+
+func TestParseDirectiveText_SingleRejectsShared(t *testing.T) {
+	_, err := parseDirectiveText("single shared(x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: single does not accept shared")
+	}
+}
+
+func TestParseDirectiveText_Task(t *testing.T) {
+	dir, err := parseDirectiveText("task depend(out:buff) private(temp)", 0, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	d, ok := dir.(TaskDirective)
+	if !ok {
+		t.Fatalf("expected TaskDirective, got %T", dir)
+	}
+	if len(d.Clauses) != 2 {
+		t.Errorf("expected 2 clauses, got %d", len(d.Clauses))
+	}
+}
+
+func TestParseDirectiveText_Taskloop(t *testing.T) {
+	dir, err := parseDirectiveText("taskloop grainsize(10)", 0, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, ok := dir.(TaskloopDirective); !ok {
+		t.Fatalf("expected TaskloopDirective, got %T", dir)
+	}
+}
+
+// ---------------------------------------------
+// LEVEL 3: Parse() with real Go source code
+// ---------------------------------------------
+
+func TestParse_ParallelFor(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel for schedule(static, 10)
+	for i := 0; i < 100; i++ {
+	}
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 1 {
+		t.Fatalf("expected 1 node, got %d", len(result.Nodes))
+	}
+	if _, ok := result.Nodes[0].Directive.(ParallelForDirective); !ok {
+		t.Errorf("expected ParallelForDirective, got %T", result.Nodes[0].Directive)
+	}
+}
+
+func TestParse_ParallelBlock(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel shared(global) private(local)
+	{
+		local = 1
+		global = global + local
+	}
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 1 {
+		t.Fatalf("expected 1 node, got %d", len(result.Nodes))
+	}
+	if _, ok := result.Nodes[0].Directive.(ParallelDirective); !ok {
+		t.Errorf("expected ParallelDirective, got %T", result.Nodes[0].Directive)
+	}
+}
+
+func TestParse_MultipleDirectives(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel for private(x)
+	for i := 0; i < 100; i++ {
+	}
+
+	//gompher barrier
+
+	//gompher parallel for reduction(+:suma)
+	for i := 0; i < 10; i++ {
+	}
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 3 {
+		t.Fatalf("expected 3 nodes, got %d", len(result.Nodes))
+	}
+	if _, ok := result.Nodes[0].Directive.(ParallelForDirective); !ok {
+		t.Errorf("node 0: expected ParallelForDirective, got %T", result.Nodes[0].Directive)
+	}
+	if _, ok := result.Nodes[1].Directive.(BarrierDirective); !ok {
+		t.Errorf("node 1: expected BarrierDirective, got %T", result.Nodes[1].Directive)
+	}
+	if _, ok := result.Nodes[2].Directive.(ParallelForDirective); !ok {
+		t.Errorf("node 2: expected ParallelForDirective, got %T", result.Nodes[2].Directive)
+	}
+}
+
+func TestParse_InvalidGoSyntax(t *testing.T) {
+	src := `package main
+
+func main() {
+	this is not valid go
+}`
+	_, err := Parse(src)
+	if err == nil {
+		t.Fatal("expected error for invalid Go syntax")
+	}
+}
+
+func TestParse_For(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel
+	{
+		//gompher for
+		for i := 0; i < 100; i++ {
+		}
+	}
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 2 {
+		t.Fatalf("expected 2 nodes, got %d", len(result.Nodes))
+	}
+	if _, ok := result.Nodes[0].Directive.(ParallelDirective); !ok {
+		t.Errorf("node 0: expected ParallelDirective, got %T", result.Nodes[0].Directive)
+	}
+	if _, ok := result.Nodes[1].Directive.(ForDirective); !ok {
+		t.Errorf("node 1: expected ForDirective, got %T", result.Nodes[1].Directive)
+	}
+}
+
+func TestParse_Single(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel
+	{
+		//gompher single
+		{
+			log.Println("once")
+		}
+	}
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 2 {
+		t.Fatalf("expected 2 nodes, got %d", len(result.Nodes))
+	}
+	if _, ok := result.Nodes[1].Directive.(SingleDirective); !ok {
+		t.Errorf("node 1: expected SingleDirective, got %T", result.Nodes[1].Directive)
+	}
+}
+
+func TestParse_Master(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel
+	{
+		//gompher master
+		{
+			fmt.Println("master only")
+		}
+	}
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 2 {
+		t.Fatalf("expected 2 nodes, got %d", len(result.Nodes))
+	}
+	if _, ok := result.Nodes[1].Directive.(MasterDirective); !ok {
+		t.Errorf("node 1: expected MasterDirective, got %T", result.Nodes[1].Directive)
+	}
+}
+
+func TestParse_Critical(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel
+	{
+		//gompher critical
+		{
+			contador++
+		}
+	}
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 2 {
+		t.Fatalf("expected 2 nodes, got %d", len(result.Nodes))
+	}
+	if _, ok := result.Nodes[1].Directive.(CriticalDirective); !ok {
+		t.Errorf("node 1: expected CriticalDirective, got %T", result.Nodes[1].Directive)
+	}
+}
+
+func TestParse_Atomic(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel
+	{
+		//gompher atomic update
+		contador++
+	}
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 2 {
+		t.Fatalf("expected 2 nodes, got %d", len(result.Nodes))
+	}
+	d, ok := result.Nodes[1].Directive.(AtomicDirective)
+	if !ok {
+		t.Fatalf("expected AtomicDirective, got %T", result.Nodes[1].Directive)
+	}
+	if d.Mode != "update" {
+		t.Errorf("incorrect mode: %q", d.Mode)
+	}
+}
+
+func TestParse_Sections(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel
+	{
+		//gompher sections
+		{
+			//gompher section
+			{
+				decodificarVideo()
+			}
+
+			//gompher section
+			{
+				decodificarAudio()
+			}
+		}
+	}
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 4 {
+		t.Fatalf("expected 4 nodes, got %d", len(result.Nodes))
+	}
+	if _, ok := result.Nodes[0].Directive.(ParallelDirective); !ok {
+		t.Errorf("node 0: expected ParallelDirective, got %T", result.Nodes[0].Directive)
+	}
+	if _, ok := result.Nodes[1].Directive.(SectionsDirective); !ok {
+		t.Errorf("node 1: expected SectionsDirective, got %T", result.Nodes[1].Directive)
+	}
+	if _, ok := result.Nodes[2].Directive.(SectionDirective); !ok {
+		t.Errorf("node 2: expected SectionDirective, got %T", result.Nodes[2].Directive)
+	}
+	if _, ok := result.Nodes[3].Directive.(SectionDirective); !ok {
+		t.Errorf("node 3: expected SectionDirective, got %T", result.Nodes[3].Directive)
+	}
+}
+
+func TestParse_Tasks(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher task depend(in:x)
+	{
+		procesar(x)
+	}
+
+	//gompher taskwait
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 2 {
+		t.Fatalf("expected 2 nodes, got %d", len(result.Nodes))
+	}
+
+	if _, ok := result.Nodes[0].Directive.(TaskDirective); !ok {
+		t.Errorf("node 0: expected TaskDirective, got %T", result.Nodes[0].Directive)
+	}
+
+	if _, ok := result.Nodes[1].Directive.(TaskwaitDirective); !ok {
+		t.Errorf("node 1: expected TaskwaitDirective, got %T", result.Nodes[1].Directive)
+	}
+}
