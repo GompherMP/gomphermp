@@ -23,7 +23,7 @@ type ParseResult struct {
 }
 
 // Parse is the main entry point for the compiler frontend.
-// It reads raw Go source code, builds the native Abstract Syntax Tree (AST),
+// It reads raw Go source code, builds the native Abstract Syntax Tree,
 // and extracts all valid //gompher directives anchored to their executable blocks.
 func Parse(src string) (*ParseResult, error) {
 	fset := token.NewFileSet()
@@ -92,6 +92,7 @@ func setNode(dir Directive, node ast.Node) Directive {
 }
 
 // getDirectiveLine safely extracts the original source line number from any directive.
+// Used primarily to preserve the top-to-bottom execution order.
 func getDirectiveLine(dir Directive) int {
 	switch d := dir.(type) {
 	case ParallelDirective:
@@ -128,21 +129,19 @@ func getDirectiveLine(dir Directive) int {
 }
 
 // extractAnnotatedNodes maps //gompher directives to their corresponding Go AST nodes.
-// It uses ast.CommentMap from Go's standard library.
-// For each AST node, we check if any //gompher comment is associated with it.
-// Directives without an associated node (barrier, taskwait) are added separately.
+// It leverages go/ast.CommentMap to natively and accurately bind comments to executable
+// statements, replacing the need for manual line-lookback heuristics.
 func extractAnnotatedNodes(fset *token.FileSet, file *ast.File) ([]AnnotatedNode, error) {
-	// CommentMap associates each ast.Node with the comments that document it.
-	// This handles all the edge cases the manual lookback approach struggled with.
+	// CommentMap associates each ast.Node with the comments that physically precede it.
 	cmap := ast.NewCommentMap(fset, file, file.Comments)
 
-	// Track which directives we've matched so we can detect orphan barriers/taskwaits.
+	// Tracks matched comments to identify contextless directives later (e.g., barriers).
 	matchedComments := make(map[*ast.Comment]bool)
 
 	var result []AnnotatedNode
 	var firstErr error
 
-	// Walk the AST. For each node, check if any //gompher comment is mapped to it.
+	// Walk the AST looking for nodes that have GompherMP comments mapped to them.
 	ast.Inspect(file, func(n ast.Node) bool {
 		if n == nil || firstErr != nil {
 			return false
@@ -173,8 +172,8 @@ func extractAnnotatedNodes(fset *token.FileSet, file *ast.File) ([]AnnotatedNode
 		return nil, firstErr
 	}
 
-	// Add directives that have no associated node (barrier, taskwait).
-	// These are //gompher comments not associated with any AST node by CommentMap.
+	// Rescue orphan directives (like barrier or taskwait) that the CommentMap
+	// did not associate with any specific execution block.
 	for _, cg := range file.Comments {
 		for _, c := range cg.List {
 			if !isGompherComment(c.Text) || matchedComments[c] {
@@ -193,7 +192,7 @@ func extractAnnotatedNodes(fset *token.FileSet, file *ast.File) ([]AnnotatedNode
 		}
 	}
 
-	// Preserve source order — important for the transformer.
+	// Preserve source file ordering to ensure the transformer processes the AST chronologically.
 	sort.Slice(result, func(i, j int) bool {
 		return getDirectiveLine(result[i].Directive) < getDirectiveLine(result[j].Directive)
 	})
@@ -201,12 +200,12 @@ func extractAnnotatedNodes(fset *token.FileSet, file *ast.File) ([]AnnotatedNode
 	return result, nil
 }
 
-// isGompherComment reports whether a comment is a GompherMP directive.
+// isGompherComment validates if a raw string is intended for the GompherMP compiler.
 func isGompherComment(text string) bool {
 	return strings.HasPrefix(text, "//gompher ") || text == "//gompher"
 }
 
-// parseGompherComment extracts and parses a //gompher directive from a comment.
+// parseGompherComment isolates spatial tracking from the lexical parsing of a directive.
 func parseGompherComment(fset *token.FileSet, c *ast.Comment) (Directive, error) {
 	line := fset.Position(c.Pos()).Line
 	text := strings.TrimSpace(strings.TrimPrefix(c.Text, "//gompher"))
@@ -401,8 +400,7 @@ func extractKind(text string) (DirectiveKind, string, error) {
 }
 
 // validClauses defines the strict compliance mapping for OpenMP directives.
-// Directives not present in this map are treated as synchronization constructs
-// that do not accept standard data-sharing clauses.
+// Contextless or synchronization directives accept no clauses and are omitted here.
 var validClauses = map[DirectiveKind][]ClauseKind{
 	DirParallel:    {ClausePrivate, ClauseFirstPrivate, ClauseShared},
 	DirFor:         {ClausePrivate, ClauseFirstPrivate, ClauseSchedule},
@@ -411,12 +409,10 @@ var validClauses = map[DirectiveKind][]ClauseKind{
 	DirSingle:      {ClausePrivate, ClauseFirstPrivate},
 	DirTask:        {ClausePrivate, ClauseFirstPrivate, ClauseDepend},
 	DirTaskloop:    {ClausePrivate, ClauseFirstPrivate, ClauseGrainsize},
-	// Contextless or sync directives accept no clauses:
-	// DirSection, DirMaster, DirBarrier, DirAtomic, DirCritical, DirTaskwait, DirTaskgroup
 }
 
 // validateClauses cross-references extracted clauses against the validClauses map,
-// enforcing OpenMP structural rules before the compilation continues.
+// enforcing structural rules before the AST mutation phase begins.
 func validateClauses(kind DirectiveKind, clauses []Clause) error {
 	allowed, exists := validClauses[kind]
 
