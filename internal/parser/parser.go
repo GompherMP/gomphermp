@@ -125,6 +125,19 @@ func extractAnnotatedNodes(fset *token.FileSet, file *ast.File) ([]AnnotatedNode
 					return false
 				}
 
+				if directiveRequiresNode(directive) {
+					commentLine := fset.Position(c.Pos()).Line
+					nodeLine := fset.Position(n.Pos()).Line
+					if nodeLine-commentLine != 1 {
+						firstErr = fmt.Errorf("line %d: directive %q must be immediately before its target (gap: %d lines)", commentLine, directive.directiveKind(), nodeLine-commentLine)
+						return false
+					}
+					if err := validateNodeType(directive, n); err != nil {
+						firstErr = fmt.Errorf("line %d: %w", commentLine, err)
+						return false
+					}
+				}
+
 				result = append(result, AnnotatedNode{
 					Directive: setNode(directive, n),
 				})
@@ -137,12 +150,80 @@ func extractAnnotatedNodes(fset *token.FileSet, file *ast.File) ([]AnnotatedNode
 		return nil, firstErr
 	}
 
+	if err := validateSectionContext(result); err != nil {
+		return nil, err
+	}
+
 	// Preserve source file ordering to ensure the transformer processes the AST chronologically.
 	sort.Slice(result, func(i, j int) bool {
 		return getDirectiveLine(result[i].Directive) < getDirectiveLine(result[j].Directive)
 	})
 
 	return result, nil
+}
+
+// directiveRequiresNode returns false for directives that are pure synchronization points
+// (barrier, taskwait) and have no associated executable block.
+func directiveRequiresNode(dir Directive) bool {
+	switch dir.directiveKind() {
+	case DirBarrier, DirTaskwait:
+		return false
+	}
+	return true
+}
+
+// validateNodeType enforces that each directive is attached to the correct Go AST node kind.
+// This catches user errors like //gompher for placed over a non-loop statement before the
+// transformer attempts a type assertion that would otherwise panic at runtime.
+func validateNodeType(dir Directive, node ast.Node) error {
+	switch dir.directiveKind() {
+	case DirFor, DirParallelFor, DirTaskloop:
+		if _, ok := node.(*ast.ForStmt); !ok {
+			return fmt.Errorf("directive %q requires a for loop, got %T", dir.directiveKind(), node)
+		}
+	case DirAtomic:
+		switch node.(type) {
+		case *ast.ExprStmt, *ast.AssignStmt, *ast.IncDecStmt:
+			// valid
+		default:
+			return fmt.Errorf("directive %q requires an expression or assignment statement, got %T", dir.directiveKind(), node)
+		}
+	case DirParallel, DirSections, DirSection, DirSingle, DirMaster, DirCritical, DirTask, DirTaskgroup:
+		if _, ok := node.(*ast.BlockStmt); !ok {
+			return fmt.Errorf("directive %q requires a block statement, got %T", dir.directiveKind(), node)
+		}
+	}
+	return nil
+}
+
+// validateSectionContext enforces that every //gompher section directive lives inside a
+// //gompher sections directive's block. It uses source position containment to check membership.
+func validateSectionContext(result []AnnotatedNode) error {
+	var sectionsNodes []ast.Node
+	for _, n := range result {
+		if d, ok := n.Directive.(SectionsDirective); ok {
+			sectionsNodes = append(sectionsNodes, d.Node)
+		}
+	}
+
+	for _, n := range result {
+		d, ok := n.Directive.(SectionDirective)
+		if !ok {
+			continue
+		}
+
+		inside := false
+		for _, s := range sectionsNodes {
+			if d.Node.Pos() >= s.Pos() && d.Node.End() <= s.End() {
+				inside = true
+				break
+			}
+		}
+		if !inside {
+			return fmt.Errorf("line %d: directive %q must appear inside a //gompher sections block", d.Line, DirSection)
+		}
+	}
+	return nil
 }
 
 // isGompherComment validates if a raw string is intended for the GompherMP compiler.
@@ -163,7 +244,7 @@ func parseGompherComment(fset *token.FileSet, c *ast.Comment) (Directive, error)
 }
 
 // parseDirectiveText translates a raw comment string into a strongly-typed Directive struct.
-// It acts as the orchestrator: identifying the kind, extracting clauses, and running validation.
+// It acts as the orchestrator: identifying the kind, then delegating construction.
 func parseDirectiveText(text string, p token.Pos, line int) (Directive, error) {
 	if text == "" {
 		return nil, fmt.Errorf("empty //gompher directive")
@@ -174,8 +255,12 @@ func parseDirectiveText(text string, p token.Pos, line int) (Directive, error) {
 		return nil, err
 	}
 
-	srcPos := pos{Pos: p, Line: line}
+	return buildDirective(kind, rest, pos{Pos: p, Line: line})
+}
 
+// buildDirective constructs the concrete Directive for an already-validated kind.
+// Separated from parseDirectiveText so the terminal error return is reachable from tests.
+func buildDirective(kind DirectiveKind, rest string, srcPos pos) (Directive, error) {
 	switch kind {
 	case DirParallel:
 		clauses, err := extractClauses(rest)
@@ -301,7 +386,7 @@ func parseDirectiveText(text string, p token.Pos, line int) (Directive, error) {
 		return TaskloopDirective{Clauses: clauses, pos: srcPos}, nil
 	}
 
-	panic(fmt.Sprintf("unreachable: extractKind returned unknown kind %q", kind))
+	return nil, fmt.Errorf("unknown directive: %q", kind)
 }
 
 // extractKind matches the base directive name.

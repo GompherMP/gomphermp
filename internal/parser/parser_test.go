@@ -1,8 +1,158 @@
 package parser
 
 import (
+	"strings"
 	"testing"
 )
+
+// ---------------------------------------------
+// Semantic validations: node type, adjacency, section context, empty clauses
+// ---------------------------------------------
+
+func TestParse_ForOnNonForStmt(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher for
+	{
+		x := 1
+		_ = x
+	}
+}`
+	_, err := Parse(src)
+	if err == nil {
+		t.Fatal("expected error: //gompher for must target a for loop")
+	}
+}
+
+func TestParse_ParallelForOnNonForStmt(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel for
+	{
+		x := 1
+		_ = x
+	}
+}`
+	_, err := Parse(src)
+	if err == nil {
+		t.Fatal("expected error: //gompher parallel for must target a for loop")
+	}
+}
+
+func TestParse_TaskloopOnNonForStmt(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher taskloop
+	{
+		x := 1
+		_ = x
+	}
+}`
+	_, err := Parse(src)
+	if err == nil {
+		t.Fatal("expected error: //gompher taskloop must target a for loop")
+	}
+}
+
+func TestParse_ParallelOnNonBlockStmt(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel
+	for i := 0; i < 10; i++ {
+	}
+}`
+	_, err := Parse(src)
+	if err == nil {
+		t.Fatal("expected error: //gompher parallel must target a block statement")
+	}
+}
+
+func TestParse_AtomicOnBlockStmt(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher atomic
+	{
+		x := 1
+		_ = x
+	}
+}`
+	_, err := Parse(src)
+	if err == nil {
+		t.Fatal("expected error: //gompher atomic must target an expression or assignment")
+	}
+}
+
+func TestParse_AtomicOnAssignStmt(t *testing.T) {
+	src := `package main
+
+var contador int
+
+func main() {
+	//gompher atomic update
+	contador = contador + 1
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, ok := result.Nodes[0].Directive.(AtomicDirective); !ok {
+		t.Errorf("expected AtomicDirective, got %T", result.Nodes[0].Directive)
+	}
+}
+
+func TestParse_BlankLineBetweenDirectiveAndBlock(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel
+
+	{
+		x := 1
+		_ = x
+	}
+}`
+	_, err := Parse(src)
+	if err == nil {
+		t.Fatal("expected error: blank line between directive and block")
+	}
+}
+
+func TestParse_SectionOutsideSections(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher section
+	{
+		doWork()
+	}
+}`
+	_, err := Parse(src)
+	if err == nil {
+		t.Fatal("expected error: //gompher section must appear inside //gompher sections")
+	}
+}
+
+func TestExtractClauses_EmptyPrivate(t *testing.T) {
+	_, err := extractClauses("private()")
+	if err == nil {
+		t.Fatal("expected error for private()")
+	}
+	if !strings.Contains(err.Error(), "at least one variable") {
+		t.Errorf("expected message about empty variable list, got: %v", err)
+	}
+}
+
+func TestExtractClauses_EmptyShared(t *testing.T) {
+	_, err := extractClauses("shared(  )")
+	if err == nil {
+		t.Fatal("expected error for shared() with whitespace")
+	}
+}
 
 // ---------------------------------------------
 // LEVEL 1: extractClauses() in isolation
@@ -928,6 +1078,13 @@ func TestParseDirectiveText_Empty(t *testing.T) {
 	_, err := parseDirectiveText("", 0, 1)
 	if err == nil {
 		t.Fatal("expected error for empty directive text")
+	}
+}
+
+func TestBuildDirective_UnknownKind(t *testing.T) {
+	_, err := buildDirective(DirectiveKind("bogus"), "", pos{})
+	if err == nil {
+		t.Fatal("expected error for unknown kind")
 	}
 }
 
