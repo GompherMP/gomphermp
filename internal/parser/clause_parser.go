@@ -58,10 +58,7 @@ func parseNextClause(text string) (Clause, string, error) {
 		kind := parts[1]
 		vars := splitVars(parts[2])
 
-		clause, err := makeVarListClause(kind, vars)
-		if err != nil {
-			return nil, "", err
-		}
+		clause, _ := makeVarListClause(kind, vars)
 		return clause, rest, nil
 	}
 

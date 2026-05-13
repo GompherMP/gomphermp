@@ -528,6 +528,28 @@ func main() {
 	}
 }
 
+func TestParse_NonGompherCommentIgnored(t *testing.T) {
+	src := `package main
+
+func main() {
+	// this is a regular comment
+	//gompher parallel
+	{
+		doWork()
+	}
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 1 {
+		t.Fatalf("expected 1 node, got %d", len(result.Nodes))
+	}
+	if _, ok := result.Nodes[0].Directive.(ParallelDirective); !ok {
+		t.Errorf("expected ParallelDirective, got %T", result.Nodes[0].Directive)
+	}
+}
+
 func TestParse_InvalidGoSyntax(t *testing.T) {
 	src := `package main
 
@@ -730,5 +752,389 @@ func main() {
 
 	if _, ok := result.Nodes[1].Directive.(TaskwaitDirective); !ok {
 		t.Errorf("node 1: expected TaskwaitDirective, got %T", result.Nodes[1].Directive)
+	}
+}
+
+func TestParse_Taskgroup(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher taskgroup
+	{
+		crearArbolRecursivo()
+	}
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 1 {
+		t.Fatalf("expected 1 node, got %d", len(result.Nodes))
+	}
+	if _, ok := result.Nodes[0].Directive.(TaskgroupDirective); !ok {
+		t.Errorf("expected TaskgroupDirective, got %T", result.Nodes[0].Directive)
+	}
+}
+
+func TestParse_Taskloop(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher taskloop grainsize(5)
+	for i := 0; i < 100; i++ {
+	}
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 1 {
+		t.Fatalf("expected 1 node, got %d", len(result.Nodes))
+	}
+	d, ok := result.Nodes[0].Directive.(TaskloopDirective)
+	if !ok {
+		t.Fatalf("expected TaskloopDirective, got %T", result.Nodes[0].Directive)
+	}
+	if len(d.Clauses) != 1 {
+		t.Errorf("expected 1 clause, got %d", len(d.Clauses))
+	}
+}
+
+func TestParse_InvalidGompherDirective(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher unknowndirective
+	{}
+}`
+	_, err := Parse(src)
+	if err == nil {
+		t.Fatal("expected error for invalid gompher directive")
+	}
+}
+
+// ---------------------------------------------
+// LEVEL 2: missing parseDirectiveText cases
+// ---------------------------------------------
+
+func TestParseDirectiveText_For(t *testing.T) {
+	dir, err := parseDirectiveText("for private(i)", 0, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	d, ok := dir.(ForDirective)
+	if !ok {
+		t.Fatalf("expected ForDirective, got %T", dir)
+	}
+	if len(d.Clauses) != 1 {
+		t.Errorf("expected 1 clause, got %d", len(d.Clauses))
+	}
+}
+
+func TestParseDirectiveText_Single(t *testing.T) {
+	dir, err := parseDirectiveText("single firstprivate(x)", 0, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, ok := dir.(SingleDirective); !ok {
+		t.Fatalf("expected SingleDirective, got %T", dir)
+	}
+}
+
+func TestParseDirectiveText_Taskwait(t *testing.T) {
+	dir, err := parseDirectiveText("taskwait", 0, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, ok := dir.(TaskwaitDirective); !ok {
+		t.Fatalf("expected TaskwaitDirective, got %T", dir)
+	}
+}
+
+func TestParseDirectiveText_Taskgroup(t *testing.T) {
+	dir, err := parseDirectiveText("taskgroup", 0, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, ok := dir.(TaskgroupDirective); !ok {
+		t.Fatalf("expected TaskgroupDirective, got %T", dir)
+	}
+}
+
+func TestParseDirectiveText_AtomicWrite(t *testing.T) {
+	dir, err := parseDirectiveText("atomic write", 0, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	d, ok := dir.(AtomicDirective)
+	if !ok {
+		t.Fatalf("expected AtomicDirective, got %T", dir)
+	}
+	if d.Mode != "write" {
+		t.Errorf("incorrect mode: %q", d.Mode)
+	}
+}
+
+func TestParseDirectiveText_AtomicDefaultMode(t *testing.T) {
+	dir, err := parseDirectiveText("atomic", 0, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	d, ok := dir.(AtomicDirective)
+	if !ok {
+		t.Fatalf("expected AtomicDirective, got %T", dir)
+	}
+	if d.Mode != "" {
+		t.Errorf("expected empty mode for default atomic, got %q", d.Mode)
+	}
+}
+
+func TestParseDirectiveText_AtomicInvalidMode(t *testing.T) {
+	_, err := parseDirectiveText("atomic invalidmode", 0, 1)
+	if err == nil {
+		t.Fatal("expected error for invalid atomic mode")
+	}
+}
+
+func TestParseDirectiveText_CriticalMalformedName(t *testing.T) {
+	_, err := parseDirectiveText("critical noparens", 0, 1)
+	if err == nil {
+		t.Fatal("expected error for critical name without parentheses")
+	}
+}
+
+func TestParseDirectiveText_CriticalEmptyName(t *testing.T) {
+	_, err := parseDirectiveText("critical()", 0, 1)
+	if err == nil {
+		t.Fatal("expected error for critical with empty name")
+	}
+}
+
+func TestParseDirectiveText_TaskwaitRejectsClause(t *testing.T) {
+	_, err := parseDirectiveText("taskwait private(x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: taskwait accepts no clauses")
+	}
+}
+
+func TestParseDirectiveText_TaskgroupRejectsClause(t *testing.T) {
+	_, err := parseDirectiveText("taskgroup private(x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: taskgroup accepts no clauses")
+	}
+}
+
+func TestParseDirectiveText_Empty(t *testing.T) {
+	_, err := parseDirectiveText("", 0, 1)
+	if err == nil {
+		t.Fatal("expected error for empty directive text")
+	}
+}
+
+// ---------------------------------------------
+// extractClauses error path in parseDirectiveText (one per directive)
+// ---------------------------------------------
+
+func TestParseDirectiveText_ParallelInvalidClause(t *testing.T) {
+	_, err := parseDirectiveText("parallel invalidclause(x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: invalid clause in parallel")
+	}
+}
+
+func TestParseDirectiveText_ForInvalidClause(t *testing.T) {
+	_, err := parseDirectiveText("for invalidclause(x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: invalid clause in for")
+	}
+}
+
+func TestParseDirectiveText_ParallelForInvalidClause(t *testing.T) {
+	_, err := parseDirectiveText("parallel for invalidclause(x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: invalid clause in parallel for")
+	}
+}
+
+func TestParseDirectiveText_SectionsInvalidClause(t *testing.T) {
+	_, err := parseDirectiveText("sections invalidclause(x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: invalid clause in sections")
+	}
+}
+
+func TestParseDirectiveText_SingleInvalidClause(t *testing.T) {
+	_, err := parseDirectiveText("single invalidclause(x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: invalid clause in single")
+	}
+}
+
+func TestParseDirectiveText_TaskInvalidClause(t *testing.T) {
+	_, err := parseDirectiveText("task invalidclause(x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: invalid clause in task")
+	}
+}
+
+func TestParseDirectiveText_TaskloopInvalidClause(t *testing.T) {
+	_, err := parseDirectiveText("taskloop invalidclause(x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: invalid clause in taskloop")
+	}
+}
+
+// ---------------------------------------------
+// validateClauses error paths per directive
+// ---------------------------------------------
+
+func TestParseDirectiveText_ParallelRejectsDepend(t *testing.T) {
+	_, err := parseDirectiveText("parallel depend(in:x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: parallel does not accept depend")
+	}
+}
+
+func TestParseDirectiveText_ParallelForRejectsDepend(t *testing.T) {
+	_, err := parseDirectiveText("parallel for depend(in:x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: parallel for does not accept depend")
+	}
+}
+
+func TestParseDirectiveText_SectionsRejectsDepend(t *testing.T) {
+	_, err := parseDirectiveText("sections depend(in:x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: sections does not accept depend")
+	}
+}
+
+func TestParseDirectiveText_TaskRejectsSchedule(t *testing.T) {
+	_, err := parseDirectiveText("task schedule(static)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: task does not accept schedule")
+	}
+}
+
+func TestParseDirectiveText_TaskloopRejectsShared(t *testing.T) {
+	_, err := parseDirectiveText("taskloop shared(x)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: taskloop does not accept shared")
+	}
+}
+
+// ---------------------------------------------
+// validateClauses direct call — kind not in map
+// ---------------------------------------------
+
+func TestValidateClauses_KindNotInMapWithClauses(t *testing.T) {
+	err := validateClauses(DirBarrier, []Clause{PrivateClause{Vars: []string{"x"}}})
+	if err == nil {
+		t.Fatal("expected error: barrier not in validClauses map")
+	}
+}
+
+func TestValidateClauses_KindNotInMapNoClauses(t *testing.T) {
+	err := validateClauses(DirBarrier, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// ---------------------------------------------
+// getDirectiveLine direct calls for missing types
+// ---------------------------------------------
+
+func TestDirectiveLine_AllTypes(t *testing.T) {
+	cases := []struct {
+		dir      Directive
+		expected int
+	}{
+		{ParallelDirective{pos: pos{Line: 1}}, 1},
+		{ForDirective{pos: pos{Line: 2}}, 2},
+		{ParallelForDirective{pos: pos{Line: 3}}, 3},
+		{SectionsDirective{pos: pos{Line: 4}}, 4},
+		{SectionDirective{pos: pos{Line: 5}}, 5},
+		{SingleDirective{pos: pos{Line: 6}}, 6},
+		{MasterDirective{pos: pos{Line: 7}}, 7},
+		{CriticalDirective{pos: pos{Line: 8}}, 8},
+		{BarrierDirective{pos: pos{Line: 9}}, 9},
+		{AtomicDirective{pos: pos{Line: 10}}, 10},
+		{TaskDirective{pos: pos{Line: 11}}, 11},
+		{TaskwaitDirective{pos: pos{Line: 12}}, 12},
+		{TaskgroupDirective{pos: pos{Line: 13}}, 13},
+		{TaskloopDirective{pos: pos{Line: 14}}, 14},
+	}
+	for _, tc := range cases {
+		if got := tc.dir.line(); got != tc.expected {
+			t.Errorf("%T: expected line %d, got %d", tc.dir, tc.expected, got)
+		}
+	}
+}
+
+// ---------------------------------------------
+// makeVarListClause default branch
+// ---------------------------------------------
+
+func TestMakeVarListClause_UnknownKind(t *testing.T) {
+	_, err := makeVarListClause("impossible", nil)
+	if err == nil {
+		t.Fatal("expected error for unknown clause kind")
+	}
+}
+
+// ---------------------------------------------
+// directiveKind() — one call per concrete type
+// ---------------------------------------------
+
+func TestDirectiveKind_AllTypes(t *testing.T) {
+	cases := []struct {
+		dir      Directive
+		expected DirectiveKind
+	}{
+		{ParallelDirective{}, DirParallel},
+		{ForDirective{}, DirFor},
+		{ParallelForDirective{}, DirParallelFor},
+		{SectionsDirective{}, DirSections},
+		{SectionDirective{}, DirSection},
+		{SingleDirective{}, DirSingle},
+		{MasterDirective{}, DirMaster},
+		{CriticalDirective{}, DirCritical},
+		{BarrierDirective{}, DirBarrier},
+		{AtomicDirective{}, DirAtomic},
+		{TaskDirective{}, DirTask},
+		{TaskwaitDirective{}, DirTaskwait},
+		{TaskgroupDirective{}, DirTaskgroup},
+		{TaskloopDirective{}, DirTaskloop},
+	}
+	for _, tc := range cases {
+		if got := tc.dir.directiveKind(); got != tc.expected {
+			t.Errorf("%T: expected kind %q, got %q", tc.dir, tc.expected, got)
+		}
+	}
+}
+
+// ---------------------------------------------
+// clauseKind() — one call per concrete type
+// ---------------------------------------------
+
+func TestClauseKind_AllTypes(t *testing.T) {
+	cases := []struct {
+		clause   Clause
+		expected ClauseKind
+	}{
+		{PrivateClause{}, ClausePrivate},
+		{FirstPrivateClause{}, ClauseFirstPrivate},
+		{LastPrivateClause{}, ClauseLastPrivate},
+		{SharedClause{}, ClauseShared},
+		{ReductionClause{}, ClauseReduction},
+		{ScheduleClause{}, ClauseSchedule},
+		{DependClause{}, ClauseDepend},
+		{GrainsizeClause{}, ClauseGrainsize},
+	}
+	for _, tc := range cases {
+		if got := tc.clause.clauseKind(); got != tc.expected {
+			t.Errorf("%T: expected kind %q, got %q", tc.clause, tc.expected, got)
+		}
 	}
 }

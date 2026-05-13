@@ -91,41 +91,10 @@ func setNode(dir Directive, node ast.Node) Directive {
 	}
 }
 
-// getDirectiveLine safely extracts the original source line number from any directive.
+// getDirectiveLine extracts the source line number from any directive.
 // Used primarily to preserve the top-to-bottom execution order.
 func getDirectiveLine(dir Directive) int {
-	switch d := dir.(type) {
-	case ParallelDirective:
-		return d.Line
-	case ForDirective:
-		return d.Line
-	case ParallelForDirective:
-		return d.Line
-	case SectionsDirective:
-		return d.Line
-	case SectionDirective:
-		return d.Line
-	case SingleDirective:
-		return d.Line
-	case MasterDirective:
-		return d.Line
-	case CriticalDirective:
-		return d.Line
-	case BarrierDirective:
-		return d.Line
-	case AtomicDirective:
-		return d.Line
-	case TaskDirective:
-		return d.Line
-	case TaskwaitDirective:
-		return d.Line
-	case TaskgroupDirective:
-		return d.Line
-	case TaskloopDirective:
-		return d.Line
-	default:
-		return 0
-	}
+	return dir.line()
 }
 
 // extractAnnotatedNodes maps //gompher directives to their corresponding Go AST nodes.
@@ -134,9 +103,6 @@ func getDirectiveLine(dir Directive) int {
 func extractAnnotatedNodes(fset *token.FileSet, file *ast.File) ([]AnnotatedNode, error) {
 	// CommentMap associates each ast.Node with the comments that physically precede it.
 	cmap := ast.NewCommentMap(fset, file, file.Comments)
-
-	// Tracks matched comments to identify contextless directives later (e.g., barriers).
-	matchedComments := make(map[*ast.Comment]bool)
 
 	var result []AnnotatedNode
 	var firstErr error
@@ -159,7 +125,6 @@ func extractAnnotatedNodes(fset *token.FileSet, file *ast.File) ([]AnnotatedNode
 					return false
 				}
 
-				matchedComments[c] = true
 				result = append(result, AnnotatedNode{
 					Directive: setNode(directive, n),
 				})
@@ -170,26 +135,6 @@ func extractAnnotatedNodes(fset *token.FileSet, file *ast.File) ([]AnnotatedNode
 
 	if firstErr != nil {
 		return nil, firstErr
-	}
-
-	// Rescue orphan directives (like barrier or taskwait) that the CommentMap
-	// did not associate with any specific execution block.
-	for _, cg := range file.Comments {
-		for _, c := range cg.List {
-			if !isGompherComment(c.Text) || matchedComments[c] {
-				continue
-			}
-
-			directive, err := parseGompherComment(fset, c)
-			if err != nil {
-				return nil, err
-			}
-
-			kind := directive.directiveKind()
-			if kind == DirBarrier || kind == DirTaskwait {
-				result = append(result, AnnotatedNode{Directive: directive})
-			}
-		}
 	}
 
 	// Preserve source file ordering to ensure the transformer processes the AST chronologically.
@@ -356,7 +301,7 @@ func parseDirectiveText(text string, p token.Pos, line int) (Directive, error) {
 		return TaskloopDirective{Clauses: clauses, pos: srcPos}, nil
 	}
 
-	return nil, fmt.Errorf("unknown directive: %q", kind)
+	panic(fmt.Sprintf("unreachable: extractKind returned unknown kind %q", kind))
 }
 
 // extractKind matches the base directive name.
