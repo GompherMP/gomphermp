@@ -25,9 +25,13 @@ The output is a `ParseResult` that the transformer consumes to rewrite the sourc
         and pairs it with its corresponding Go AST node.
         |
         v
- Orphan rescue pass
-        Catches barrier and taskwait directives, which have no attached code block
-        and are therefore not found by the CommentMap walk.
+ Semantic validation
+        Verifies node type compatibility, comment adjacency, and clause validity
+        for each directive.
+        |
+        v
+ Hierarchical context validation
+        Verifies that every //gompher section is contained inside a //gompher sections block.
         |
         v
  Sort by source line
@@ -80,7 +84,7 @@ An interface implemented by all 14 GompherMP directive types. Each concrete type
 | `MasterDirective` | `*ast.BlockStmt` | none |
 | `CriticalDirective` | `*ast.BlockStmt` | none (optional lock name) |
 | `BarrierDirective` | none | none |
-| `AtomicDirective` | `*ast.ExprStmt` / `*ast.AssignStmt` | none (optional mode) |
+| `AtomicDirective` | `*ast.ExprStmt` / `*ast.AssignStmt` / `*ast.IncDecStmt` | none (optional mode) |
 | `TaskDirective` | `*ast.BlockStmt` | private, firstprivate, depend |
 | `TaskwaitDirective` | none | none |
 | `TaskgroupDirective` | `*ast.BlockStmt` | none |
@@ -113,4 +117,72 @@ An interface implemented by all clause types. Clauses are the arguments attached
 - `barrier` and `taskwait` are standalone — they do not annotate any block.
 - `critical` accepts an optional lock name using parenthesis syntax: `//gompher critical(mylock)`.
 - `atomic` accepts an optional mode: `read`, `write`, or `update`. The default when omitted is `update`.
+- `section` must appear inside a `sections` block — it cannot be used standalone.
 - Clause validation is enforced at parse time. Providing an unsupported clause for a given directive is an error.
+
+---
+
+## Semantic Validations
+
+Beyond parsing the directive text, the parser enforces four categories of semantic rules. Each violation produces a parse-time error with an explicit message and line number.
+
+| Validation | What it checks | Example rejected input |
+|---|---|---|
+| **Node type** | The directive is attached to a compatible Go AST node | `//gompher for` placed over a `*ast.BlockStmt` instead of a `*ast.ForStmt` |
+| **Adjacency** | The directive comment is exactly one line above its target | A blank line between `//gompher parallel` and its `{ ... }` block |
+| **Hierarchical context** | `section` directives live inside a `sections` block | `//gompher section` placed at the top of a function body |
+| **Non-empty clause arguments** | Variable-list clauses contain at least one variable | `//gompher parallel private()` |
+
+These validations run after the AST walk and before the final sort. A failure short-circuits the pipeline and returns the error to the caller of `Parse`.
+
+---
+
+## Running Tests
+
+The parser ships with a full test suite covering directive parsing, clause parsing, full integration over real Go source, semantic validations, interface contracts, and internal helpers.
+
+### Run all tests
+
+```bash
+go test ./internal/parser/...
+```
+
+### Run with verbose output
+
+```bash
+go test -v ./internal/parser/...
+```
+
+Shows each test case name and its result (`PASS` or `FAIL`).
+
+### Generate a coverage profile
+
+```bash
+go test -coverprofile=parser_cov.out ./internal/parser/...
+```
+
+This runs the tests and writes raw coverage data to `parser_cov.out`. The summary line in stdout reports the overall percentage.
+
+### View per-function coverage
+
+```bash
+go tool cover -func=parser_cov.out
+```
+
+Prints a table with each function and method in the module alongside its individual coverage percentage.
+
+### View line-by-line coverage as HTML
+
+```bash
+go tool cover -html=parser_cov.out -o coverage.html
+```
+
+Generates an HTML file showing the source code annotated with covered (green) and uncovered (red) lines. Open `coverage.html` in a browser.
+
+### Run a specific test
+
+```bash
+go test -v -run TestParse_ParallelBlock ./internal/parser/
+```
+
+The `-run` flag accepts a regex, so `-run "TestParse_.*"` runs every integration test, for example.
