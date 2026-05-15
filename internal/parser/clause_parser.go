@@ -12,6 +12,10 @@ var (
 	// reVarList covers: private(x, y), firstprivate(x), lastprivate(x), shared(x, y)
 	reVarList = regexp.MustCompile(`^(private|firstprivate|lastprivate|shared)\(([^)]+)\)`)
 
+	// reEmptyVarList catches private(), firstprivate(), etc. with empty argument lists,
+	// allowing a clearer error message than the generic "unknown clause".
+	reEmptyVarList = regexp.MustCompile(`^(private|firstprivate|lastprivate|shared)\(\s*\)`)
+
 	// reReduction covers: reduction(+:suma), reduction(max:val)
 	reReduction = regexp.MustCompile(`^reduction\(([+\-*]|&&|\|\||max|min):([^)]+)\)`)
 
@@ -50,6 +54,10 @@ func extractClauses(text string) ([]Clause, error) {
 // parseNextClause parses the first clause found at the start of the text.
 // Returns the parsed Clause, the remaining unparsed text, and any error.
 func parseNextClause(text string) (Clause, string, error) {
+	if m := reEmptyVarList.FindStringSubmatch(text); m != nil {
+		return nil, "", fmt.Errorf("clause %q requires at least one variable", m[1])
+	}
+
 	if m := reVarList.FindStringSubmatchIndex(text); m != nil {
 		matched := text[m[0]:m[1]]
 		rest := text[m[1]:]
@@ -58,10 +66,7 @@ func parseNextClause(text string) (Clause, string, error) {
 		kind := parts[1]
 		vars := splitVars(parts[2])
 
-		clause, err := makeVarListClause(kind, vars)
-		if err != nil {
-			return nil, "", err
-		}
+		clause, _ := makeVarListClause(kind, vars)
 		return clause, rest, nil
 	}
 

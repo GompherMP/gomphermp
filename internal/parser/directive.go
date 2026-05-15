@@ -6,10 +6,11 @@ import (
 )
 
 // Directive is the interface implemented by all GompherMP directives.
-// The unexported method directiveKind() follows the same pattern as Clause.
+// The unexported methods follow the same pattern as Clause.
 // Only types in this package can implement Directive.
 type Directive interface {
 	directiveKind() DirectiveKind
+	line() int
 }
 
 // DirectiveKind identifies which //gompher directive was written.
@@ -49,6 +50,7 @@ type ParallelDirective struct {
 }
 
 func (d ParallelDirective) directiveKind() DirectiveKind { return DirParallel }
+func (d ParallelDirective) line() int                    { return d.Line }
 
 // ForDirective represents //gompher for.
 // It distributes the iterations of a loop among the existing goroutines of the current team.
@@ -59,6 +61,7 @@ type ForDirective struct {
 }
 
 func (d ForDirective) directiveKind() DirectiveKind { return DirFor }
+func (d ForDirective) line() int                    { return d.Line }
 
 // ParallelForDirective represents //gompher parallel for.
 // A combined construct that creates a parallel region and immediately distributes the loop iterations.
@@ -69,6 +72,7 @@ type ParallelForDirective struct {
 }
 
 func (d ParallelForDirective) directiveKind() DirectiveKind { return DirParallelFor }
+func (d ParallelForDirective) line() int                    { return d.Line }
 
 // SectionsDirective represents //gompher sections.
 // It defines a set of independent blocks of work to be dynamically distributed among the team.
@@ -79,6 +83,7 @@ type SectionsDirective struct {
 }
 
 func (d SectionsDirective) directiveKind() DirectiveKind { return DirSections }
+func (d SectionsDirective) line() int                    { return d.Line }
 
 // SectionDirective represents //gompher section.
 // It marks a single independent block of work within a sections directive.
@@ -88,6 +93,7 @@ type SectionDirective struct {
 }
 
 func (d SectionDirective) directiveKind() DirectiveKind { return DirSection }
+func (d SectionDirective) line() int                    { return d.Line }
 
 // SingleDirective represents //gompher single.
 // It ensures the associated block is executed by only one goroutine in the team (includes an implicit barrier).
@@ -98,6 +104,7 @@ type SingleDirective struct {
 }
 
 func (d SingleDirective) directiveKind() DirectiveKind { return DirSingle }
+func (d SingleDirective) line() int                    { return d.Line }
 
 // MasterDirective represents //gompher master.
 // It ensures the block is executed exclusively by the master goroutine (no implicit barrier).
@@ -107,6 +114,7 @@ type MasterDirective struct {
 }
 
 func (d MasterDirective) directiveKind() DirectiveKind { return DirMaster }
+func (d MasterDirective) line() int                    { return d.Line }
 
 // CriticalDirective represents //gompher critical.
 // It guarantees mutual exclusion, serializing access to the block to prevent race conditions.
@@ -117,6 +125,7 @@ type CriticalDirective struct {
 }
 
 func (d CriticalDirective) directiveKind() DirectiveKind { return DirCritical }
+func (d CriticalDirective) line() int                    { return d.Line }
 
 // BarrierDirective represents //gompher barrier.
 // It specifies an explicit synchronization point where all goroutines in the team must wait.
@@ -126,6 +135,7 @@ type BarrierDirective struct {
 }
 
 func (d BarrierDirective) directiveKind() DirectiveKind { return DirBarrier }
+func (d BarrierDirective) line() int                    { return d.Line }
 
 // AtomicDirective represents //gompher atomic.
 // It guarantees that a simple memory operation (read, write, or update) is executed atomically.
@@ -136,6 +146,7 @@ type AtomicDirective struct {
 }
 
 func (d AtomicDirective) directiveKind() DirectiveKind { return DirAtomic }
+func (d AtomicDirective) line() int                    { return d.Line }
 
 // TaskDirective represents //gompher task.
 // It defines an explicit, asynchronous unit of work to be processed by a task pool.
@@ -146,6 +157,7 @@ type TaskDirective struct {
 }
 
 func (d TaskDirective) directiveKind() DirectiveKind { return DirTask }
+func (d TaskDirective) line() int                    { return d.Line }
 
 // TaskwaitDirective represents //gompher taskwait.
 // It synchronizes the current task by pausing execution until all its direct child tasks finish.
@@ -155,6 +167,7 @@ type TaskwaitDirective struct {
 }
 
 func (d TaskwaitDirective) directiveKind() DirectiveKind { return DirTaskwait }
+func (d TaskwaitDirective) line() int                    { return d.Line }
 
 // TaskgroupDirective represents //gompher taskgroup.
 // It provides deep synchronization, waiting for all descendant tasks in its scope to complete.
@@ -164,6 +177,7 @@ type TaskgroupDirective struct {
 }
 
 func (d TaskgroupDirective) directiveKind() DirectiveKind { return DirTaskgroup }
+func (d TaskgroupDirective) line() int                    { return d.Line }
 
 // TaskloopDirective represents //gompher taskloop.
 // It distributes loop iterations by generating an asynchronous task for each chunk of iterations.
@@ -174,3 +188,4 @@ type TaskloopDirective struct {
 }
 
 func (d TaskloopDirective) directiveKind() DirectiveKind { return DirTaskloop }
+func (d TaskloopDirective) line() int                    { return d.Line }
