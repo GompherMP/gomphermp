@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
 
 // NumThreads is the size of the goroutine team for parallel regions.
@@ -96,7 +97,7 @@ func For(body func(int), iterations int) {
 }
 
 // Parallel creates a team of goroutines, each executing body concurrently.
-// Each goroutine receives its thread ID (0 to NumThreads-1).
+// Each goroutine receives its thread ID.
 // Sets up team context so Barrier() and other team-aware functions work.
 // Waits for all goroutines to complete before returning (implicit barrier).
 func Parallel(body func(int)) {
@@ -160,6 +161,83 @@ func ParallelFor(body func(int), iterations int) {
 				body(i)
 			}
 		}(start, end)
+	}
+
+	wg.Wait()
+}
+
+// ForDynamic distributes iterations across goroutines using a shared work queue.
+// Each goroutine repeatedly claims a chunk of `chunkSize` consecutive iterations
+// from the queue, executes it, and returns for more until the iteration space
+// is exhausted.
+func ForDynamic(body func(int), iterations, chunkSize int) {
+	if iterations <= 0 {
+		return
+	}
+	if chunkSize <= 0 {
+		chunkSize = 1
+	}
+	if NumThreads <= 0 {
+		NumThreads = 1
+	}
+
+	var counter int64
+	var wg sync.WaitGroup
+
+	for threadID := 0; threadID < NumThreads; threadID++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				start := atomic.AddInt64(&counter, int64(chunkSize)) - int64(chunkSize)
+				if start >= int64(iterations) {
+					return
+				}
+				end := start + int64(chunkSize)
+				if end > int64(iterations) {
+					end = int64(iterations)
+				}
+				for i := start; i < end; i++ {
+					body(int(i))
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
+}
+
+// Sections distributes independent code blocks across goroutines. Each block
+// is executed by exactly one goroutine, with assignment made dynamically as
+// goroutines become available.
+func Sections(sections []func()) {
+	if len(sections) == 0 {
+		return
+	}
+	if NumThreads <= 0 {
+		NumThreads = 1
+	}
+
+	workers := NumThreads
+	if workers > len(sections) {
+		workers = len(sections)
+	}
+
+	var counter int64
+	var wg sync.WaitGroup
+
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				idx := atomic.AddInt64(&counter, 1) - 1
+				if idx >= int64(len(sections)) {
+					return
+				}
+				sections[idx]()
+			}
+		}()
 	}
 
 	wg.Wait()
