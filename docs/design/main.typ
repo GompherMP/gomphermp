@@ -52,3 +52,5 @@
 #include "sections/01_introduction.typ"
 #include "sections/02_modules.typ"
 #include "sections/03_transformer.typ"
+#include "sections/04_runtime.typ"
+#include "sections/05_semantic.typ"
