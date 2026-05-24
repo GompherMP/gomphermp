@@ -47,8 +47,10 @@ Por brevedad, los nombres de las pruebas en las tablas omiten su prefijo: las pr
                                             [Unitaria],    [`Directive/AtomicWrite`],
                                             [Unitaria],    [`Directive/AtomicDefaultMode`],
 
-    table.cell(rowspan: 2)[`task`],         [Integración], [`Parse/Tasks`],
+    table.cell(rowspan: 4)[`task`],         [Integración], [`Parse/Tasks`],
                                             [Unitaria],    [`Directive/Task`],
+                                            [Unitaria],    [`Directive/TaskShared`],
+                                            [Unitaria],    [`Directive/TaskReduction`],
 
     table.cell(rowspan: 2)[`taskwait`],     [Integración], [`Parse/Tasks`],
                                             [Unitaria],    [`Directive/Taskwait`],
