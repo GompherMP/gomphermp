@@ -80,6 +80,31 @@ func TestTaskwait_WaitsForDirectChildren(t *testing.T) {
 	})
 }
 
+// TestTaskwait_MultipleChildren verifies Taskwait blocks until all direct
+// child tasks have completed, not just the first one.
+func TestTaskwait_MultipleChildren(t *testing.T) {
+	const n = 5
+	results := make([]int64, n)
+
+	Taskgroup(func() {
+		for i := 0; i < n; i++ {
+			i := i
+			Task(func() {
+				time.Sleep(10 * time.Millisecond)
+				atomic.StoreInt64(&results[i], 1)
+			})
+		}
+
+		Taskwait()
+
+		for i := 0; i < n; i++ {
+			if atomic.LoadInt64(&results[i]) != 1 {
+				t.Errorf("child %d not done after Taskwait", i)
+			}
+		}
+	})
+}
+
 // TestTaskwait_NoopOutsideTask verifies Taskwait does not block when called
 // outside any task context.
 func TestTaskwait_NoopOutsideTask(t *testing.T) {
@@ -173,6 +198,21 @@ func TestTaskloop_CorrectIterationValues(t *testing.T) {
 		if results[i] != i*i {
 			t.Errorf("results[%d] = %d, expected %d", i, results[i], i*i)
 		}
+	}
+}
+
+// TestTaskloop_NegativeIterations verifies Taskloop is a no-op for negative iterations.
+func TestTaskloop_NegativeIterations(t *testing.T) {
+	var counter int64
+
+	Taskgroup(func() {
+		Taskloop(func(i int) {
+			atomic.AddInt64(&counter, 1)
+		}, -10, 1)
+	})
+
+	if counter != 0 {
+		t.Errorf("expected 0 iterations for negative input, got %d", counter)
 	}
 }
 

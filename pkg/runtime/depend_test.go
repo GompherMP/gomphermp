@@ -55,6 +55,28 @@ func TestTaskWithDepend_InoutChain(t *testing.T) {
 	}
 }
 
+// TestTaskWithDepend_ConsecutiveWriters verifies that a second depend(out:x) task
+// waits for the first depend(out:x) task on the same address to complete.
+func TestTaskWithDepend_ConsecutiveWriters(t *testing.T) {
+	var x int64
+	xAddr := uintptr(unsafe.Pointer(&x))
+
+	Taskgroup(func() {
+		TaskWithDepend(func() {
+			time.Sleep(20 * time.Millisecond)
+			atomic.StoreInt64(&x, 1)
+		}, nil, []uintptr{xAddr}, nil) // first out:x
+
+		TaskWithDepend(func() {
+			atomic.StoreInt64(&x, atomic.LoadInt64(&x)+1)
+		}, nil, []uintptr{xAddr}, nil) // second out:x — must wait for first
+	})
+
+	if x != 2 {
+		t.Errorf("expected x=2 after two serialized writers, got %d", x)
+	}
+}
+
 // TestTaskWithDepend_IndependentTokens verifies tasks on different dependency
 // tokens are not serialized and both execute correctly.
 func TestTaskWithDepend_IndependentTokens(t *testing.T) {
@@ -77,6 +99,24 @@ func TestTaskWithDepend_IndependentTokens(t *testing.T) {
 	}
 	if y != 2 {
 		t.Errorf("expected y=2, got %d", y)
+	}
+}
+
+// TestTaskWithDepend_InWithNoWriter verifies that a depend(in:x) task proceeds
+// immediately when no prior depend(out:x) task has claimed that address.
+func TestTaskWithDepend_InWithNoWriter(t *testing.T) {
+	var x int64 = 42
+	var result int64
+	xAddr := uintptr(unsafe.Pointer(&x))
+
+	Taskgroup(func() {
+		TaskWithDepend(func() {
+			atomic.StoreInt64(&result, atomic.LoadInt64(&x))
+		}, []uintptr{xAddr}, nil, nil) // in:x with no prior out:x
+	})
+
+	if result != 42 {
+		t.Errorf("expected result=42, got %d", result)
 	}
 }
 
