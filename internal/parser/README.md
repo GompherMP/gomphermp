@@ -1,6 +1,6 @@
 # Parser
 
-The parser is the compiler frontend for GompherMP. It takes raw Go source code as input, builds a standard Go Abstract Syntax Tree (AST), and extracts all `//gompher` pragma directives — pairing each one with the Go syntax node it annotates.
+The parser is the compiler frontend for GompherMP. It takes raw Go source code as input, builds a standard Go Abstract Syntax Tree (AST), and extracts all `//gompher` pragma directives (pairing each one with the Go syntax node it annotates).
 
 The output is a `ParseResult` that the transformer consumes to rewrite the source into concurrent Go code.
 
@@ -65,7 +65,7 @@ The fundamental unit produced by the parser. Each instance pairs a parsed direct
 |---|---|---|
 | `Directive` | `Directive` | The parsed directive (e.g. `ParallelDirective`, `ForDirective`) |
 
-The `Directive` itself holds the corresponding `ast.Node` — the block or statement the directive governs.
+The `Directive` itself holds the corresponding `ast.Node` (the block or statement the directive governs).
 
 ---
 
@@ -90,7 +90,7 @@ An interface implemented by all 14 GompherMP directive types. Each concrete type
 | `TaskgroupDirective` | `*ast.BlockStmt` | none |
 | `TaskloopDirective` | `*ast.ForStmt` | private, firstprivate, grainsize |
 
-`BarrierDirective` and `TaskwaitDirective` carry no `ast.Node` — they are synchronization points with no associated code block.
+`BarrierDirective` and `TaskwaitDirective` carry no `ast.Node` (they are synchronization points with no associated code block).
 
 ---
 
@@ -114,10 +114,10 @@ An interface implemented by all clause types. Clauses are the arguments attached
 ## Directive Syntax Rules
 
 - A directive must be placed on the line **directly above** the block or statement it annotates, with no blank lines or intervening comments between them.
-- `barrier` and `taskwait` are standalone — they do not annotate any block.
+- `barrier` and `taskwait` are standalone - they do not annotate any block.
 - `critical` accepts an optional lock name using parenthesis syntax: `//gompher critical(mylock)`.
 - `atomic` accepts an optional mode: `read`, `write`, or `update`. The default when omitted is `update`.
-- `section` must appear inside a `sections` block — it cannot be used standalone.
+- `section` must appear inside a `sections` block. It cannot be used standalone.
 - Clause validation is enforced at parse time. Providing an unsupported clause for a given directive is an error.
 
 ---

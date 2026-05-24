@@ -129,7 +129,7 @@ func Parallel(body func(int)) {
 	wg.Wait()
 }
 
-// ParallelFor combines Parallel and For — creates a team and distributes iterations.
+// ParallelFor combines Parallel and For - creates a team and distributes iterations.
 // This is a convenience function equivalent to calling Parallel with For inside.
 func ParallelFor(body func(int), iterations int) {
 	if iterations <= 0 {

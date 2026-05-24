@@ -30,7 +30,7 @@
 #show figure.where(kind: image): set figure(supplement: [Figura])
 
 #align(center)[
-  #text(17pt, weight: "bold")[Informe de Cobertura de Pruebas — Módulo Parser de GompherMP]
+  #text(17pt, weight: "bold")[Informe de Cobertura de Pruebas  Módulo Parser de GompherMP]
 
   #v(1em)
   Jorge David Alejandro Contreras \

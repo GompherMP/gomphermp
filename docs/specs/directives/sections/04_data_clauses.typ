@@ -174,7 +174,7 @@ Declara que una o más variables son compartidas por todas las goroutines. Todas
   caption: [Uso de shared en región paralela]
 )
 
-*Explicación:* Todas las goroutines acceden a la misma variable x. El programador es responsable de la sincronización — en este caso con critical para evitar condiciones de carrera.
+*Explicación:* Todas las goroutines acceden a la misma variable x. El programador es responsable de la sincronización - en este caso con critical para evitar condiciones de carrera.
 
 === Caso 2: En Generación de Tareas
 

@@ -16,12 +16,12 @@ var (
 // Critical provides mutual exclusion for the given block.
 func Critical(name string, body func()) {
 	if name == "" {
-		// Anonymous critical section — use global lock
+		// Anonymous critical section - use global lock
 		anonLock.Lock()
 		defer anonLock.Unlock()
 		body()
 	} else {
-		// Named critical section — get or create named lock
+		// Named critical section - get or create named lock
 		lock := getNamedLock(name)
 		lock.Lock()
 		defer lock.Unlock()

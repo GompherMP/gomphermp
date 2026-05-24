@@ -87,7 +87,7 @@ func setNode(dir Directive, node ast.Node) Directive {
 		d.Node = node
 		return d
 	default:
-		return dir // BarrierDirective, TaskwaitDirective — no node required
+		return dir // BarrierDirective, TaskwaitDirective (no node required)
 	}
 }
 

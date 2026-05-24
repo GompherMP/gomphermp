@@ -26,7 +26,7 @@ Cada directiva tiene un tipo de nodo Go que puede anotar. Los directivos `for`, 
 
 == Validación de adyacencia (línea en blanco)
 
-Una directiva GompherMP debe estar ubicada exactamente en la línea inmediatamente anterior al bloque de código que anota. Cualquier separación —ya sea una línea en blanco u otro comentario interpuesto— se considera un error porque puede causar que la directiva se asocie silenciosamente con un nodo incorrecto del AST.
+Una directiva GompherMP debe estar ubicada exactamente en la línea inmediatamente anterior al bloque de código que anota. Cualquier separación -ya sea una línea en blanco u otro comentario interpuesto- se considera un error porque puede causar que la directiva se asocie silenciosamente con un nodo incorrecto del AST.
 
 Esta regla se verifica mediante la prueba `Parse/BlankLineBetweenDirectiveAndBlock`, que construye un programa con una línea en blanco intencional entre la directiva y su bloque objetivo y comprueba que el parser retorna un error.
 

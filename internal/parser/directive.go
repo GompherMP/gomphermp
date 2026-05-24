@@ -131,7 +131,7 @@ func (d CriticalDirective) line() int                    { return d.Line }
 // It specifies an explicit synchronization point where all goroutines in the team must wait.
 type BarrierDirective struct {
 	pos
-	// Node is always nil — barrier is a sync point with no associated code
+	// Node is always nil - barrier is a sync point with no associated code
 }
 
 func (d BarrierDirective) directiveKind() DirectiveKind { return DirBarrier }
@@ -163,7 +163,7 @@ func (d TaskDirective) line() int                    { return d.Line }
 // It synchronizes the current task by pausing execution until all its direct child tasks finish.
 type TaskwaitDirective struct {
 	pos
-	// Node is always nil — taskwait is a sync point with no associated code
+	// Node is always nil - taskwait is a sync point with no associated code
 }
 
 func (d TaskwaitDirective) directiveKind() DirectiveKind { return DirTaskwait }

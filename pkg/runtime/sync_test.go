@@ -43,7 +43,7 @@ func TestCritical_NamedLocks(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	// Goroutine 1 — uses lock "A"
+	// Goroutine 1 - uses lock "A"
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -54,7 +54,7 @@ func TestCritical_NamedLocks(t *testing.T) {
 		}
 	}()
 
-	// Goroutine 2 — uses lock "B" (should not block on A)
+	// Goroutine 2 - uses lock "B" (should not block on A)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -319,13 +319,13 @@ func TestBarrier_SynchronizesGoroutines(t *testing.T) {
 	var raceDetected int64
 
 	Parallel(func(threadID int) {
-		// Phase 1 — all goroutines do this
+		// Phase 1 - all goroutines do this
 		atomic.AddInt64(&phase1Complete, 1)
 
-		// Barrier — all must reach here before any continue
+		// Barrier - all must reach here before any continue
 		Barrier()
 
-		// Phase 2 — should only start after ALL finished phase 1
+		// Phase 2 - should only start after ALL finished phase 1
 		if atomic.LoadInt64(&phase1Complete) != int64(NumThreads) {
 			atomic.StoreInt64(&raceDetected, 1)
 		}
