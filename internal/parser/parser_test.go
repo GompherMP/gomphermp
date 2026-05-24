@@ -473,6 +473,44 @@ func TestParseDirectiveText_Task(t *testing.T) {
 	}
 }
 
+func TestParseDirectiveText_TaskShared(t *testing.T) {
+	dir, err := parseDirectiveText("task shared(result)", 0, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	d, ok := dir.(TaskDirective)
+	if !ok {
+		t.Fatalf("expected TaskDirective, got %T", dir)
+	}
+	if len(d.Clauses) != 1 {
+		t.Errorf("expected 1 clause, got %d", len(d.Clauses))
+	}
+	if _, ok := d.Clauses[0].(SharedClause); !ok {
+		t.Errorf("expected SharedClause, got %T", d.Clauses[0])
+	}
+}
+
+func TestParseDirectiveText_TaskReduction(t *testing.T) {
+	dir, err := parseDirectiveText("task reduction(+:sum)", 0, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	d, ok := dir.(TaskDirective)
+	if !ok {
+		t.Fatalf("expected TaskDirective, got %T", dir)
+	}
+	if len(d.Clauses) != 1 {
+		t.Errorf("expected 1 clause, got %d", len(d.Clauses))
+	}
+	rc, ok := d.Clauses[0].(ReductionClause)
+	if !ok {
+		t.Errorf("expected ReductionClause, got %T", d.Clauses[0])
+	}
+	if rc.Operator != "+" || len(rc.Vars) != 1 || rc.Vars[0] != "sum" {
+		t.Errorf("unexpected reduction clause: %+v", rc)
+	}
+}
+
 func TestParseDirectiveText_Taskloop(t *testing.T) {
 	dir, err := parseDirectiveText("taskloop grainsize(10)", 0, 1)
 	if err != nil {
