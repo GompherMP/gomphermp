@@ -24,10 +24,7 @@ var (
 )
 
 // getGoroutineID extracts the runtime ID of the calling goroutine by parsing
-// the first line of its stack trace. The technique is a well-known Go idiom
-// used by production libraries and is the cheapest way to obtain a stable
-// identity for the executing goroutine without relying on an unexported field
-// of the runtime.
+// the first line of its stack trace.
 func getGoroutineID() int64 {
 	var buf [64]byte
 	n := runtime.Stack(buf[:], false)
@@ -78,7 +75,7 @@ func newTeam(size int) *teamContext {
 }
 
 // Parallel instantiates a team of PoolSize() goroutines, each receiving its
-// thread ID, and blocks until every member returns (implicit barrier). When
+// thread ID, and blocks until every member returns. When
 // invoked from inside an already-active parallel region the call is
 // serialized: the body executes once with thread ID 0 in a virtual team of
 // size 1, mirroring OpenMP's "nested parallelism disabled" default.
@@ -112,7 +109,7 @@ func Parallel(body func(int)) {
 	wg.Wait()
 }
 
-// For distributes the iteration space [0, iterations) across the pool by
+// For distributes the iteration space across the pool by
 // splitting it into PoolSize() contiguous chunks of approximately equal size.
 // Each chunk is dispatched as a separate job to a pool worker.
 func For(body func(int), iterations int) {

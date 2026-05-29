@@ -5,6 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // ---------------------------------------------------------------------------
@@ -174,4 +175,106 @@ func TestSetPoolSize_OldWorkersExitCleanly(t *testing.T) {
 
 		wg.Wait()
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Worker persistence
+// ---------------------------------------------------------------------------
+
+// TestPool_WorkersReusedAcrossSubmissions: Core proof that the pool is
+// persistent. The same goroutine IDs must service jobs submitted in different
+// batches. If each Parallel-like region spawned fresh goroutines, the set of
+// IDs observed in the second batch would be disjoint from the first. We force
+// the workers to be simultaneously busy in each batch and then check 
+// that the two observed ID sets are identical.
+func TestPool_WorkersReusedAcrossSubmissions(t *testing.T) {
+	original := PoolSize()
+	defer SetPoolSize(original)
+	SetPoolSize(4)
+
+	collectIDs := func() map[int64]bool {
+		p := getPool()
+		release := make(chan struct{})
+		var ids sync.Map
+		var ready sync.WaitGroup
+		ready.Add(p.size)
+
+		var wg sync.WaitGroup
+		wg.Add(p.size)
+		for i := 0; i < p.size; i++ {
+			p.submit(job{
+				body: func(int) {
+					ids.Store(getGoroutineID(), struct{}{})
+					ready.Done()
+					<-release
+				},
+				threadID: 0,
+				team:     nil,
+				done:     &wg,
+			})
+		}
+		ready.Wait()
+		close(release)
+		wg.Wait()
+
+		set := make(map[int64]bool)
+		ids.Range(func(k, _ any) bool {
+			set[k.(int64)] = true
+			return true
+		})
+		return set
+	}
+
+	first := collectIDs()
+	second := collectIDs()
+
+	if len(first) != PoolSize() || len(second) != PoolSize() {
+		t.Fatalf("expected %d distinct worker IDs per batch, got first=%d second=%d",
+			PoolSize(), len(first), len(second))
+	}
+
+	for id := range first {
+		if !second[id] {
+			t.Errorf("worker goroutine ID %d serviced first batch but not the second. Pool is not persistent", id)
+		}
+	}
+}
+
+// TestPool_WorkersExecuteConcurrently verifies that a pool of size N actually
+// runs N jobs simultaneously rather than serializing them. All workers must
+// reach a synchronization point at the same time.
+func TestPool_WorkersExecuteConcurrently(t *testing.T) {
+	original := PoolSize()
+	defer SetPoolSize(original)
+	SetPoolSize(4)
+
+	p := getPool()
+	start := make(chan struct{})
+	arrived := make(chan struct{}, p.size)
+
+	var wg sync.WaitGroup
+	wg.Add(p.size)
+	for i := 0; i < p.size; i++ {
+		p.submit(job{
+			body: func(int) {
+				arrived <- struct{}{}
+				<-start
+			},
+			threadID: 0,
+			team:     nil,
+			done:     &wg,
+		})
+	}
+
+	timeout := time.After(2 * time.Second)
+	for i := 0; i < p.size; i++ {
+		select {
+		case <-arrived:
+		case <-timeout:
+			t.Fatalf("only %d of %d workers reached the sync point - jobs are being serialized", i, p.size)
+		}
+	}
+
+	close(start)
+	wg.Wait()
 }

@@ -13,13 +13,15 @@ Where the parser turns directives into typed structs and the transformer rewrite
         |
         v
  runtime.Parallel(...)
-        Creates a team of NumThreads goroutines, registers each in a team context,
-        and waits for all of them to finish (implicit barrier).
+        Submits one job per worker to the persistent goroutine pool,
+        registers each worker in a team context, and waits for all of them
+        to finish (implicit barrier).
         |
         v
  Work-sharing constructs
         runtime.For, runtime.ForDynamic, runtime.Sections
-        distribute work units across the team according to a scheduling policy.
+        submit jobs to the same pool and distribute work units across the
+        team according to a scheduling policy.
         |
         v
  Synchronization primitives
@@ -30,21 +32,19 @@ Where the parser turns directives into typed structs and the transformer rewrite
 
 ---
 
-## Configuration
+## Architecture: persistent goroutine pool
 
-### `NumThreads`
+At package initialization (`init()` in `pool.go`), the runtime pre-instantiates a worker pool sized to `runtime.GOMAXPROCS(0)`. The workers are long-lived goroutines that consume jobs from a shared channel and stay alive across every parallel region in the program. This mirrors the worker-pool architecture used by production OpenMP runtimes (libgomp, Intel OpenMP) and avoids paying goroutine creation/teardown cost on every `Parallel`, `For`, `Sections` call.
 
-```go
-var NumThreads = runtime.NumCPU()
-```
-
-The size of every goroutine team. Defaults to the number of CPU cores reported by Go's `runtime` package. Can be reassigned by the program before invoking any parallel construct:
+### Configuration
 
 ```go
-runtime.NumThreads = 4
+runtime.PoolSize()         // current pool size
+runtime.SetPoolSize(n)     // resize the pool (creates a new pool and shuts down the old workers)
+runtime.CurrentTeamSize()  // size of the team the calling goroutine belongs to (1 if none)
 ```
 
-If set to a value `<= 0`, every construct auto-corrects it to `1` (sequential execution) to keep behavior safe.
+`SetPoolSize(n)` with `n <= 0` is clamped to `1` (sequential execution) so misuse degrades gracefully instead of producing a broken pool. In production, prefer setting `GOMAXPROCS` before the program starts to control the initial pool size; `SetPoolSize` is primarily a testing and tuning hook.
 
 ---
 
@@ -54,11 +54,19 @@ If set to a value `<= 0`, every construct auto-corrects it to `1` (sequential ex
 
 | Function | Purpose |
 |---|---|
-| `Parallel(body func(int))` | Spawns a team of `NumThreads` goroutines, each receiving its thread ID. Sets up team context so `Barrier()` works. Waits for all to finish before returning (implicit barrier). |
-| `For(body func(int), iterations int)` | Splits `[0, iterations)` into `NumThreads` contiguous chunks and assigns one chunk per goroutine. Static scheduling without chunk size. |
+| `Parallel(body func(int))` | Submits `PoolSize()` jobs to the pool, each receiving its thread ID. Sets up team context so `Barrier()` works. Waits for all jobs to finish before returning (implicit barrier). When invoked from inside an already-active parallel region, serializes the call: the body runs once with thread ID 0 in a virtual team of size 1 (nested parallelism disabled, matching OpenMP's default). |
+| `For(body func(int), iterations int)` | Splits `[0, iterations)` into `PoolSize()` contiguous chunks and submits one chunk per worker. Static scheduling without chunk size. |
 | `ParallelFor(body func(int), iterations int)` | Convenience: creates a team and statically distributes iterations in a single call. |
-| `ForDynamic(body func(int), iterations, chunkSize int)` | Dynamic scheduling: a shared atomic counter dispatches chunks of size `chunkSize` as goroutines become idle. Suited for iterations with variable cost. |
-| `Sections(sections []func())` | Dispatches a slice of independent code blocks across goroutines using the same dynamic-counter pattern as `ForDynamic`. Used to implement the `//gompher sections` directive. |
+| `ForDynamic(body func(int), iterations, chunkSize int)` | Dynamic scheduling: a shared atomic counter dispatches chunks of size `chunkSize` as workers become idle. Suited for iterations with variable cost. |
+| `Sections(sections []func())` | Dispatches a slice of independent code blocks across workers using the same dynamic-counter pattern as `ForDynamic`. Used to implement the `//gompher sections` directive. |
+
+### Pool management - `pool.go`
+
+| Function | Purpose |
+|---|---|
+| `PoolSize() int` | Returns the size of the active pool. |
+| `SetPoolSize(n int)` | Replaces the active pool with a new one of size `n` (clamped to 1 if non-positive). Old workers exit cleanly when their channel closes. |
+| `CurrentTeamSize() int` | Returns the size of the team the calling goroutine belongs to, or `1` if the caller is not inside any parallel region. |
 
 ### Synchronization - `sync.go`
 
@@ -73,7 +81,7 @@ If set to a value `<= 0`, every construct auto-corrects it to `1` (sequential ex
 
 ## Team semantics
 
-A parallel region is built around a *team context* (a struct that tracks the active goroutines so `Barrier()` can synchronize them). The team context is registered per goroutine using its runtime ID (parsed from the goroutine stack header). The runtime maintains a `map[goroutineID]*teamContext` protected by an `sync.RWMutex`.
+A parallel region is built around a *team context* (a struct that tracks the active workers so `Barrier()` can synchronize them). When a pool worker picks up a job carrying a team context, it registers itself in the team for the duration of the job's body and unregisters when the body returns. Registration uses the worker's runtime goroutine ID (parsed from the goroutine stack header) as the key. The runtime maintains a `map[goroutineID]*teamContext` protected by an `sync.RWMutex`.
 
 This lookup is what lets `Barrier()` know which team the caller belongs to. Calls to `Barrier()` from outside a `Parallel` region (i.e. from a goroutine without a registered team) become safe no-ops instead of panicking.
 
