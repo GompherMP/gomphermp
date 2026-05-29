@@ -8,23 +8,26 @@ import (
 	"sync/atomic"
 )
 
-// NumThreads is the size of the goroutine team for parallel regions.
-var NumThreads = runtime.NumCPU()
-
-// teamContext holds synchronization state for a parallel region.
+// teamContext holds the synchronization state shared by every goroutine that
+// participates in a single parallel region.
 type teamContext struct {
 	barrier *sync.WaitGroup
 	size    int
 }
 
 var (
-	// teamMap associates goroutine IDs with their team context
+	// teamMap associates each pool worker (by goroutine ID) with the team
+	// context it is currently executing within. The mapping is rewritten every
+	// time a worker picks up a new job and cleared when the job finishes.
 	teamMap   = make(map[int64]*teamContext)
 	teamMapMu sync.RWMutex
 )
 
-// getGoroutineID returns the current goroutine's ID by parsing the stack.
-// This is a well-known Go idiom used by production libraries.
+// getGoroutineID extracts the runtime ID of the calling goroutine by parsing
+// the first line of its stack trace. The technique is a well-known Go idiom
+// used by production libraries and is the cheapest way to obtain a stable
+// identity for the executing goroutine without relying on an unexported field
+// of the runtime.
 func getGoroutineID() int64 {
 	var buf [64]byte
 	n := runtime.Stack(buf[:], false)
@@ -33,7 +36,9 @@ func getGoroutineID() int64 {
 	return id
 }
 
-// registerInTeam associates this goroutine with the given team context.
+// registerInTeam binds the calling goroutine to the given team for the
+// remainder of its current job. Pool workers invoke this immediately before
+// executing a job's body.
 func registerInTeam(team *teamContext) {
 	gid := getGoroutineID()
 	teamMapMu.Lock()
@@ -41,7 +46,9 @@ func registerInTeam(team *teamContext) {
 	teamMapMu.Unlock()
 }
 
-// unregisterFromTeam removes this goroutine's team association.
+// unregisterFromTeam clears the calling goroutine's team binding. Invoked by
+// the pool worker after a job's body returns, so the same worker can later
+// participate in a different team.
 func unregisterFromTeam() {
 	gid := getGoroutineID()
 	teamMapMu.Lock()
@@ -49,7 +56,8 @@ func unregisterFromTeam() {
 	teamMapMu.Unlock()
 }
 
-// getCurrentTeam returns the team context for the current goroutine, or nil.
+// getCurrentTeam returns the team context bound to the calling goroutine, or
+// nil if the goroutine is not currently executing inside any parallel region.
 func getCurrentTeam() *teamContext {
 	gid := getGoroutineID()
 	teamMapMu.RLock()
@@ -57,119 +65,135 @@ func getCurrentTeam() *teamContext {
 	return teamMap[gid]
 }
 
-// For distributes loop iterations across goroutines.
-// It divides the iteration space [0, iterations) into NumThreads chunks
-// and assigns one chunk to each goroutine.
+// newTeam creates a team context sized for the given number of participants
+// and pre-Adds that count to its barrier WaitGroup so that Barrier() calls
+// from inside the team synchronize correctly without further setup.
+func newTeam(size int) *teamContext {
+	t := &teamContext{
+		barrier: &sync.WaitGroup{},
+		size:    size,
+	}
+	t.barrier.Add(size)
+	return t
+}
+
+// Parallel instantiates a team of PoolSize() goroutines, each receiving its
+// thread ID, and blocks until every member returns (implicit barrier). When
+// invoked from inside an already-active parallel region the call is
+// serialized: the body executes once with thread ID 0 in a virtual team of
+// size 1, mirroring OpenMP's "nested parallelism disabled" default.
+func Parallel(body func(int)) {
+	// Nested invocation: serialize and run body in the calling goroutine with
+	// a transient virtual team of one so that Barrier() and CurrentTeamSize()
+	// see consistent values for the nested scope.
+	if outer := getCurrentTeam(); outer != nil {
+		unregisterFromTeam()
+		registerInTeam(newTeam(1))
+		body(0)
+		unregisterFromTeam()
+		registerInTeam(outer)
+		return
+	}
+
+	p := getPool()
+	team := newTeam(p.size)
+
+	var wg sync.WaitGroup
+	wg.Add(p.size)
+
+	for tid := 0; tid < p.size; tid++ {
+		p.submit(job{
+			body:     body,
+			threadID: tid,
+			team:     team,
+			done:     &wg,
+		})
+	}
+	wg.Wait()
+}
+
+// For distributes the iteration space [0, iterations) across the pool by
+// splitting it into PoolSize() contiguous chunks of approximately equal size.
+// Each chunk is dispatched as a separate job to a pool worker.
 func For(body func(int), iterations int) {
-	// Handle edge cases
 	if iterations <= 0 {
 		return
 	}
 
-	if NumThreads <= 0 {
-		NumThreads = 1
-	}
+	p := getPool()
+	team := newTeam(p.size)
 
-	chunkSize := iterations / NumThreads
-	remainder := iterations % NumThreads
+	chunkSize := iterations / p.size
+	remainder := iterations % p.size
 
 	var wg sync.WaitGroup
+	wg.Add(p.size)
 
-	for threadID := 0; threadID < NumThreads; threadID++ {
-		wg.Add(1)
-
-		start := threadID * chunkSize
+	for tid := 0; tid < p.size; tid++ {
+		start := tid * chunkSize
 		end := start + chunkSize
-
-		if threadID == NumThreads-1 {
+		if tid == p.size-1 {
 			end += remainder
 		}
 
-		go func(start, end int) {
-			defer wg.Done()
-			for i := start; i < end; i++ {
-				body(i)
-			}
-		}(start, end)
+		chunkStart, chunkEnd := start, end
+		p.submit(job{
+			body: func(int) {
+				for i := chunkStart; i < chunkEnd; i++ {
+					body(i)
+				}
+			},
+			threadID: tid,
+			team:     team,
+			done:     &wg,
+		})
 	}
-
 	wg.Wait()
 }
 
-// Parallel creates a team of goroutines, each executing body concurrently.
-// Each goroutine receives its thread ID.
-// Sets up team context so Barrier() and other team-aware functions work.
-// Waits for all goroutines to complete before returning (implicit barrier).
-func Parallel(body func(int)) {
-	if NumThreads <= 0 {
-		NumThreads = 1
-	}
-
-	// Create team context with barrier sized for the team
-	team := &teamContext{
-		barrier: &sync.WaitGroup{},
-		size:    NumThreads,
-	}
-	team.barrier.Add(NumThreads)
-
-	var wg sync.WaitGroup
-	for threadID := 0; threadID < NumThreads; threadID++ {
-		wg.Add(1)
-		go func(id int) {
-			defer wg.Done()
-
-			// Register this goroutine with the team
-			registerInTeam(team)
-			defer unregisterFromTeam()
-
-			body(id)
-		}(threadID)
-	}
-
-	wg.Wait()
-}
-
-// ParallelFor combines Parallel and For - creates a team and distributes iterations.
-// This is a convenience function equivalent to calling Parallel with For inside.
+// ParallelFor is the combined construct that creates a parallel team and
+// statically distributes loop iterations in a single call. Semantically
+// equivalent to wrapping a static For inside a Parallel region.
 func ParallelFor(body func(int), iterations int) {
 	if iterations <= 0 {
 		return
 	}
 
-	if NumThreads <= 0 {
-		NumThreads = 1
-	}
+	p := getPool()
+	team := newTeam(p.size)
 
-	chunkSize := iterations / NumThreads
-	remainder := iterations % NumThreads
+	chunkSize := iterations / p.size
+	remainder := iterations % p.size
 
 	var wg sync.WaitGroup
+	wg.Add(p.size)
 
-	for threadID := 0; threadID < NumThreads; threadID++ {
-		wg.Add(1)
-
-		start := threadID * chunkSize
+	for tid := 0; tid < p.size; tid++ {
+		start := tid * chunkSize
 		end := start + chunkSize
-
-		if threadID == NumThreads-1 {
+		if tid == p.size-1 {
 			end += remainder
 		}
 
-		go func(start, end int) {
-			defer wg.Done()
-			for i := start; i < end; i++ {
-				body(i)
-			}
-		}(start, end)
+		chunkStart, chunkEnd := start, end
+		p.submit(job{
+			body: func(int) {
+				for i := chunkStart; i < chunkEnd; i++ {
+					body(i)
+				}
+			},
+			threadID: tid,
+			team:     team,
+			done:     &wg,
+		})
 	}
-
 	wg.Wait()
 }
 
-// ForDynamic distributes iterations across goroutines using a shared work queue.
-// Each goroutine repeatedly claims a chunk of `chunkSize` consecutive iterations
-// from the queue, executes it, and returns for more until the iteration space
-// is exhausted.
+// ForDynamic distributes iterations across the pool using a shared atomic
+// counter. Each worker repeatedly claims a chunk of "chunkSize" consecutive
+// iterations from the counter, executes it, and returns for more until the
+// iteration space is exhausted.
 func ForDynamic(body func(int), iterations, chunkSize int) {
 	if iterations <= 0 {
 		return
@@ -177,68 +201,74 @@ func ForDynamic(body func(int), iterations, chunkSize int) {
 	if chunkSize <= 0 {
 		chunkSize = 1
 	}
-	if NumThreads <= 0 {
-		NumThreads = 1
-	}
+
+	p := getPool()
+	team := newTeam(p.size)
 
 	var counter int64
 	var wg sync.WaitGroup
+	wg.Add(p.size)
 
-	for threadID := 0; threadID < NumThreads; threadID++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for {
-				start := atomic.AddInt64(&counter, int64(chunkSize)) - int64(chunkSize)
-				if start >= int64(iterations) {
-					return
+	for tid := 0; tid < p.size; tid++ {
+		p.submit(job{
+			body: func(int) {
+				for {
+					start := atomic.AddInt64(&counter, int64(chunkSize)) - int64(chunkSize)
+					if start >= int64(iterations) {
+						return
+					}
+					end := start + int64(chunkSize)
+					if end > int64(iterations) {
+						end = int64(iterations)
+					}
+					for i := start; i < end; i++ {
+						body(int(i))
+					}
 				}
-				end := start + int64(chunkSize)
-				if end > int64(iterations) {
-					end = int64(iterations)
-				}
-				for i := start; i < end; i++ {
-					body(int(i))
-				}
-			}
-		}()
+			},
+			threadID: tid,
+			team:     team,
+			done:     &wg,
+		})
 	}
-
 	wg.Wait()
 }
 
-// Sections distributes independent code blocks across goroutines. Each block
-// is executed by exactly one goroutine, with assignment made dynamically as
-// goroutines become available.
+// Sections distributes an arbitrary list of independent code blocks across
+// the pool. Each block runs exactly once on whichever worker picks it up
+// first, using the same atomic-counter dispatch pattern as ForDynamic.
 func Sections(sections []func()) {
 	if len(sections) == 0 {
 		return
 	}
-	if NumThreads <= 0 {
-		NumThreads = 1
-	}
 
-	workers := NumThreads
+	p := getPool()
+	workers := p.size
 	if workers > len(sections) {
 		workers = len(sections)
 	}
 
+	team := newTeam(workers)
+
 	var counter int64
 	var wg sync.WaitGroup
+	wg.Add(workers)
 
 	for w := 0; w < workers; w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for {
-				idx := atomic.AddInt64(&counter, 1) - 1
-				if idx >= int64(len(sections)) {
-					return
+		p.submit(job{
+			body: func(int) {
+				for {
+					idx := atomic.AddInt64(&counter, 1) - 1
+					if idx >= int64(len(sections)) {
+						return
+					}
+					sections[idx]()
 				}
-				sections[idx]()
-			}
-		}()
+			},
+			threadID: w,
+			team:     team,
+			done:     &wg,
+		})
 	}
-
 	wg.Wait()
 }

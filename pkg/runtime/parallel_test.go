@@ -64,46 +64,33 @@ func TestFor_NegativeIterations(t *testing.T) {
 	}
 }
 
-// TestFor_InvalidNumThreads verifies For handles NumThreads <= 0.
-func TestFor_InvalidNumThreads(t *testing.T) {
-	// Save and restore original NumThreads
-	originalThreads := NumThreads
-	defer func() { NumThreads = originalThreads }()
-
-	// Test with NumThreads = 0
-	NumThreads = 0
+// TestFor_WithClampedPoolSize verifies that For continues to distribute and
+// execute every iteration after the pool is set to invalid sizes (zero or
+// negative), which SetPoolSize internally clamps to the minimum of one.
+func TestFor_WithClampedPoolSize(t *testing.T) {
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
 
 	const iterations = 10
+
+	// Pool size 0 -> clamped to 1 by SetPoolSize.
+	SetPoolSize(0)
 	var counter int64
-
 	For(func(i int) {
 		atomic.AddInt64(&counter, 1)
 	}, iterations)
-
-	// Verify all iterations were executed
 	if counter != iterations {
-		t.Errorf("expected %d iterations, got %d", iterations, counter)
+		t.Errorf("expected %d iterations after SetPoolSize(0), got %d", iterations, counter)
 	}
 
-	// Verify NumThreads was auto-corrected to 1
-	if NumThreads != 1 {
-		t.Errorf("expected NumThreads=1 after auto-correct, got %d", NumThreads)
-	}
-
-	// Reset and test with negative NumThreads
-	NumThreads = -5
+	// Pool size -5 -> clamped to 1 by SetPoolSize.
+	SetPoolSize(-5)
 	counter = 0
-
 	For(func(i int) {
 		atomic.AddInt64(&counter, 1)
 	}, iterations)
-
 	if counter != iterations {
-		t.Errorf("expected %d iterations with negative NumThreads, got %d", iterations, counter)
-	}
-
-	if NumThreads != 1 {
-		t.Errorf("expected NumThreads=1 after negative correction, got %d", NumThreads)
+		t.Errorf("expected %d iterations after SetPoolSize(-5), got %d", iterations, counter)
 	}
 }
 
@@ -111,10 +98,10 @@ func TestFor_InvalidNumThreads(t *testing.T) {
 // iterations than configured threads. All iterations must still execute exactly
 // once, even though some goroutines end up receiving no work.
 func TestFor_FewerIterationsThanThreads(t *testing.T) {
-	originalThreads := NumThreads
-	defer func() { NumThreads = originalThreads }()
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
 
-	NumThreads = 8
+	SetPoolSize(8)
 
 	const iterations = 3
 	counts := make([]int64, iterations)
@@ -133,10 +120,10 @@ func TestFor_FewerIterationsThanThreads(t *testing.T) {
 // TestParallel_AllThreadsExecute verifies all threads execute the body.
 func TestParallel_AllThreadsExecute(t *testing.T) {
 	const threads = 4
-	originalThreads := NumThreads
-	defer func() { NumThreads = originalThreads }()
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
 
-	NumThreads = threads
+	SetPoolSize(threads)
 
 	executed := make([]bool, threads)
 	var mu sync.Mutex
@@ -157,10 +144,10 @@ func TestParallel_AllThreadsExecute(t *testing.T) {
 // TestParallel_CorrectThreadIDs verifies each thread receives correct ID.
 func TestParallel_CorrectThreadIDs(t *testing.T) {
 	const threads = 8
-	originalThreads := NumThreads
-	defer func() { NumThreads = originalThreads }()
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
 
-	NumThreads = threads
+	SetPoolSize(threads)
 
 	ids := make([]int, threads)
 	var mu sync.Mutex
@@ -186,55 +173,98 @@ func TestParallel_ImplicitBarrier(t *testing.T) {
 		atomic.AddInt64(&counter, 1)
 	})
 
-	// If barrier works, counter should equal NumThreads
-	if counter != int64(NumThreads) {
-		t.Errorf("expected counter=%d, got %d", NumThreads, counter)
+	// If the implicit barrier works, counter should equal the pool size.
+	if counter != int64(PoolSize()) {
+		t.Errorf("expected counter=%d, got %d", PoolSize(), counter)
 	}
 }
 
-// TestParallel_InvalidNumThreads verifies Parallel handles NumThreads <= 0.
-func TestParallel_InvalidNumThreads(t *testing.T) {
-	originalThreads := NumThreads
-	defer func() { NumThreads = originalThreads }()
+// TestParallel_WithClampedPoolSize verifies that Parallel continues to execute
+// the body when the pool size is set to invalid values (zero or negative),
+// which SetPoolSize internally clamps to the minimum of one.
+func TestParallel_WithClampedPoolSize(t *testing.T) {
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
 
-	// Test with NumThreads = 0
-	NumThreads = 0
-
-	var executed bool
-
-	Parallel(func(threadID int) {
-		executed = true
-	})
-
-	if !executed {
-		t.Error("Parallel did not execute with NumThreads=0")
-	}
-
-	// Verify NumThreads was corrected
-	if NumThreads != 1 {
-		t.Errorf("expected NumThreads=1, got %d", NumThreads)
-	}
-}
-
-// TestParallel_NegativeNumThreads verifies Parallel auto-corrects negative NumThreads to 1.
-// Symmetric counterpart of the negative branch in TestFor_InvalidNumThreads.
-func TestParallel_NegativeNumThreads(t *testing.T) {
-	originalThreads := NumThreads
-	defer func() { NumThreads = originalThreads }()
-
-	NumThreads = -3
-
+	// Pool size 0 -> clamped to 1, body runs exactly once.
+	SetPoolSize(0)
 	var counter int64
-
 	Parallel(func(threadID int) {
 		atomic.AddInt64(&counter, 1)
 	})
-
 	if counter != 1 {
-		t.Errorf("expected counter=1 with corrected NumThreads, got %d", counter)
+		t.Errorf("expected 1 execution after SetPoolSize(0), got %d", counter)
 	}
-	if NumThreads != 1 {
-		t.Errorf("expected NumThreads=1 after correction, got %d", NumThreads)
+
+	// Pool size -3 -> clamped to 1 as well.
+	SetPoolSize(-3)
+	counter = 0
+	Parallel(func(threadID int) {
+		atomic.AddInt64(&counter, 1)
+	})
+	if counter != 1 {
+		t.Errorf("expected 1 execution after SetPoolSize(-3), got %d", counter)
+	}
+}
+
+// TestParallel_NestedSerializes verifies that Parallel invoked from inside an
+// already-active parallel region runs the body exactly once with thread ID 0
+// rather than spawning a second team.
+func TestParallel_NestedSerializes(t *testing.T) {
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
+	SetPoolSize(4)
+
+	var (
+		innerInvocations int64
+		maxInnerID       int64
+		mu               sync.Mutex
+	)
+
+	Parallel(func(outerID int) {
+		Parallel(func(innerID int) {
+			atomic.AddInt64(&innerInvocations, 1)
+			mu.Lock()
+			if int64(innerID) > maxInnerID {
+				maxInnerID = int64(innerID)
+			}
+			mu.Unlock()
+		})
+	})
+
+	// Each of the 4 outer goroutines runs its nested Parallel exactly once.
+	if innerInvocations != 4 {
+		t.Errorf("expected 4 nested executions (one per outer thread), got %d", innerInvocations)
+	}
+	// In serialized nested mode every inner thread ID must be 0.
+	if maxInnerID != 0 {
+		t.Errorf("expected nested thread ID = 0, observed max = %d", maxInnerID)
+	}
+}
+
+// TestParallel_NestedTeamSizeIsOne verifies that CurrentTeamSize() observed
+// from inside a nested parallel region reports 1, reflecting the virtual
+// single-thread team used for serialized nesting.
+func TestParallel_NestedTeamSizeIsOne(t *testing.T) {
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
+	SetPoolSize(4)
+
+	var (
+		innerSize int64
+		mu        sync.Mutex
+	)
+
+	Parallel(func(outerID int) {
+		Parallel(func(innerID int) {
+			mu.Lock()
+			innerSize = int64(CurrentTeamSize())
+			mu.Unlock()
+		})
+	})
+
+	if innerSize != 1 {
+		t.Errorf("expected CurrentTeamSize() == 1 inside nested Parallel, got %d", innerSize)
 	}
 }
 
@@ -298,12 +328,13 @@ func TestParallelFor_NegativeIterations(t *testing.T) {
 	}
 }
 
-// TestParallelFor_InvalidNumThreads verifies ParallelFor handles NumThreads <= 0.
-func TestParallelFor_InvalidNumThreads(t *testing.T) {
-	originalThreads := NumThreads
-	defer func() { NumThreads = originalThreads }()
+// TestParallelFor_WithClampedPoolSize verifies that ParallelFor continues to
+// execute every iteration after the pool size is clamped to one.
+func TestParallelFor_WithClampedPoolSize(t *testing.T) {
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
 
-	NumThreads = 0
+	SetPoolSize(0)
 
 	const iterations = 10
 	var counter int64
@@ -314,10 +345,6 @@ func TestParallelFor_InvalidNumThreads(t *testing.T) {
 
 	if counter != iterations {
 		t.Errorf("expected %d iterations, got %d", iterations, counter)
-	}
-
-	if NumThreads != 1 {
-		t.Errorf("expected NumThreads=1, got %d", NumThreads)
 	}
 }
 
@@ -432,12 +459,14 @@ func TestForDynamic_InvalidChunkSize(t *testing.T) {
 	}
 }
 
-// TestForDynamic_InvalidNumThreads verifies NumThreads <= 0 is corrected to 1.
-func TestForDynamic_InvalidNumThreads(t *testing.T) {
-	originalThreads := NumThreads
-	defer func() { NumThreads = originalThreads }()
+// TestForDynamic_WithClampedPoolSize verifies that ForDynamic continues to
+// execute every iteration after the pool size is clamped to one by an
+// invalid SetPoolSize argument.
+func TestForDynamic_WithClampedPoolSize(t *testing.T) {
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
 
-	NumThreads = 0
+	SetPoolSize(0)
 
 	const iterations = 15
 	var counter int64
@@ -449,20 +478,17 @@ func TestForDynamic_InvalidNumThreads(t *testing.T) {
 	if counter != iterations {
 		t.Errorf("expected %d iterations, got %d", iterations, counter)
 	}
-	if NumThreads != 1 {
-		t.Errorf("expected NumThreads=1 after auto-correct, got %d", NumThreads)
-	}
 }
 
 // TestForDynamic_DistributesAcrossGoroutines verifies that work is actually
-// dispatched to multiple goroutines, not serialized to one. With NumThreads>=2,
+// dispatched to multiple goroutines, not serialized to one. With pool size >= 2,
 // iterations large enough and chunks small enough, at least two distinct
 // goroutine IDs must record activity.
 func TestForDynamic_DistributesAcrossGoroutines(t *testing.T) {
-	originalThreads := NumThreads
-	defer func() { NumThreads = originalThreads }()
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
 
-	NumThreads = 4
+	SetPoolSize(4)
 
 	const iterations = 1000
 	var (
@@ -531,10 +557,10 @@ func TestSections_AllSectionsExecute(t *testing.T) {
 
 // TestSections_FewerSectionsThanThreads verifies excess goroutines are not spawned.
 func TestSections_FewerSectionsThanThreads(t *testing.T) {
-	originalThreads := NumThreads
-	defer func() { NumThreads = originalThreads }()
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
 
-	NumThreads = 8
+	SetPoolSize(8)
 	var counter int64
 
 	Sections([]func(){
@@ -550,10 +576,10 @@ func TestSections_FewerSectionsThanThreads(t *testing.T) {
 // TestSections_MoreSectionsThanThreads verifies all sections execute when there
 // are more sections than goroutines.
 func TestSections_MoreSectionsThanThreads(t *testing.T) {
-	originalThreads := NumThreads
-	defer func() { NumThreads = originalThreads }()
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
 
-	NumThreads = 2
+	SetPoolSize(2)
 	const total = 20
 	var counter int64
 
@@ -575,12 +601,14 @@ func TestSections_EmptyList(t *testing.T) {
 	Sections(nil)
 }
 
-// TestSections_InvalidNumThreads verifies NumThreads <= 0 is corrected to 1.
-func TestSections_InvalidNumThreads(t *testing.T) {
-	originalThreads := NumThreads
-	defer func() { NumThreads = originalThreads }()
+// TestSections_WithClampedPoolSize verifies that Sections continues to execute
+// every block after the pool size is clamped to one by an invalid SetPoolSize
+// argument.
+func TestSections_WithClampedPoolSize(t *testing.T) {
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
 
-	NumThreads = 0
+	SetPoolSize(0)
 	var counter int64
 
 	Sections([]func(){
@@ -591,9 +619,6 @@ func TestSections_InvalidNumThreads(t *testing.T) {
 
 	if counter != 3 {
 		t.Errorf("expected 3 executions, got %d", counter)
-	}
-	if NumThreads != 1 {
-		t.Errorf("expected NumThreads=1 after auto-correct, got %d", NumThreads)
 	}
 }
 
