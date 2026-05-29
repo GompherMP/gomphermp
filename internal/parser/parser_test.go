@@ -6,7 +6,7 @@ import (
 )
 
 // =============================================================================
-// Clause parsing — extractClauses() in isolation
+// Clause parsing - extractClauses() in isolation
 // =============================================================================
 
 func TestExtractClauses_Private(t *testing.T) {
@@ -288,7 +288,7 @@ func TestExtractClauses_Unknown(t *testing.T) {
 }
 
 // =============================================================================
-// Directive parsing — parseDirectiveText() in isolation
+// Directive parsing - parseDirectiveText() in isolation
 // =============================================================================
 
 // --- Valid directives ---
@@ -698,7 +698,7 @@ func TestParseDirectiveText_TaskloopInvalidClause(t *testing.T) {
 }
 
 // =============================================================================
-// Full integration — Parse() with real Go source code
+// Full integration - Parse() with real Go source code
 // =============================================================================
 
 func TestParse_ParallelBlock(t *testing.T) {
@@ -1218,7 +1218,7 @@ func TestExtractClauses_EmptyShared(t *testing.T) {
 }
 
 // =============================================================================
-// Interface contracts — verify every concrete type implements its interface
+// Interface contracts - verify every concrete type implements its interface
 // =============================================================================
 
 func TestDirectiveKind_AllTypes(t *testing.T) {
@@ -1297,7 +1297,7 @@ func TestClauseKind_AllTypes(t *testing.T) {
 }
 
 // =============================================================================
-// Internal helpers — direct calls to unexported functions
+// Internal helpers - direct calls to unexported functions
 // =============================================================================
 
 func TestValidateClauses_KindNotInMapWithClauses(t *testing.T) {

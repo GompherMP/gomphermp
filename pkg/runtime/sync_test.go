@@ -43,7 +43,7 @@ func TestCritical_NamedLocks(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	// Goroutine 1 — uses lock "A"
+	// Goroutine 1 - uses lock "A"
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -54,7 +54,7 @@ func TestCritical_NamedLocks(t *testing.T) {
 		}
 	}()
 
-	// Goroutine 2 — uses lock "B" (should not block on A)
+	// Goroutine 2 - uses lock "B" (should not block on A)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -310,23 +310,23 @@ func TestMaster_AllThreadsContinue(t *testing.T) {
 
 // TestBarrier_SynchronizesGoroutines verifies all goroutines wait at barrier.
 func TestBarrier_SynchronizesGoroutines(t *testing.T) {
-	originalThreads := NumThreads
-	defer func() { NumThreads = originalThreads }()
-	NumThreads = 4
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
+	SetPoolSize(4)
 
 	var phase1Complete int64
 	var phase2Start int64
 	var raceDetected int64
 
 	Parallel(func(threadID int) {
-		// Phase 1 — all goroutines do this
+		// Phase 1 - all goroutines do this
 		atomic.AddInt64(&phase1Complete, 1)
 
-		// Barrier — all must reach here before any continue
+		// Barrier - all must reach here before any continue
 		Barrier()
 
-		// Phase 2 — should only start after ALL finished phase 1
-		if atomic.LoadInt64(&phase1Complete) != int64(NumThreads) {
+		// Phase 2 - should only start after ALL finished phase 1
+		if atomic.LoadInt64(&phase1Complete) != int64(PoolSize()) {
 			atomic.StoreInt64(&raceDetected, 1)
 		}
 		atomic.AddInt64(&phase2Start, 1)
@@ -335,11 +335,11 @@ func TestBarrier_SynchronizesGoroutines(t *testing.T) {
 	if atomic.LoadInt64(&raceDetected) != 0 {
 		t.Error("phase 2 started before all goroutines finished phase 1")
 	}
-	if phase1Complete != int64(NumThreads) {
-		t.Errorf("expected %d in phase 1, got %d", NumThreads, phase1Complete)
+	if phase1Complete != int64(PoolSize()) {
+		t.Errorf("expected %d in phase 1, got %d", PoolSize(), phase1Complete)
 	}
-	if phase2Start != int64(NumThreads) {
-		t.Errorf("expected %d in phase 2, got %d", NumThreads, phase2Start)
+	if phase2Start != int64(PoolSize()) {
+		t.Errorf("expected %d in phase 2, got %d", PoolSize(), phase2Start)
 	}
 }
 
@@ -351,13 +351,13 @@ func TestBarrier_OutsideParallel(t *testing.T) {
 
 // TestBarrier_DifferentTeamSizes verifies barrier works with various team sizes.
 func TestBarrier_DifferentTeamSizes(t *testing.T) {
-	originalThreads := NumThreads
-	defer func() { NumThreads = originalThreads }()
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
 
 	sizes := []int{1, 2, 4, 8}
 
 	for _, size := range sizes {
-		NumThreads = size
+		SetPoolSize(size)
 		var counter int64
 
 		Parallel(func(threadID int) {
@@ -373,9 +373,9 @@ func TestBarrier_DifferentTeamSizes(t *testing.T) {
 
 // TestBarrier_NoDeadlock verifies barrier completes in reasonable time.
 func TestBarrier_NoDeadlock(t *testing.T) {
-	originalThreads := NumThreads
-	defer func() { NumThreads = originalThreads }()
-	NumThreads = 8
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
+	SetPoolSize(8)
 
 	done := make(chan bool, 1)
 
@@ -396,11 +396,11 @@ func TestBarrier_NoDeadlock(t *testing.T) {
 
 // TestBarrier_OrderOfOperations verifies work after barrier sees work before barrier.
 func TestBarrier_OrderOfOperations(t *testing.T) {
-	originalThreads := NumThreads
-	defer func() { NumThreads = originalThreads }()
-	NumThreads = 4
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
+	SetPoolSize(4)
 
-	values := make([]int, NumThreads)
+	values := make([]int, PoolSize())
 	var sumAfter int64
 
 	Parallel(func(threadID int) {
@@ -419,8 +419,8 @@ func TestBarrier_OrderOfOperations(t *testing.T) {
 	})
 
 	// Each goroutine sees the total of 60
-	// Total sumAfter = 60 * NumThreads = 240
-	expected := int64(60 * NumThreads)
+	// Total sumAfter = 60 * PoolSize() = 240
+	expected := int64(60 * PoolSize())
 	if sumAfter != expected {
 		t.Errorf("expected sumAfter=%d, got %d", expected, sumAfter)
 	}

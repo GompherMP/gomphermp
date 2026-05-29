@@ -30,12 +30,12 @@
 #show figure.where(kind: image): set figure(supplement: [Figura])
 
 #align(center)[
-  #text(17pt, weight: "bold")[Informe de Cobertura de Pruebas  Módulo Parser de GompherMP]
+  #text(17pt, weight: "bold")[Informe de Cobertura de Pruebas - Módulo de Mecanismos de Sincronización de GompherMP]
 
   #v(1em)
   Jorge David Alejandro Contreras \
   Patricia Natividad Cántaro Márquez \
-  10 de mayo de 2026
+  17 de mayo de 2026
 ]
 
 #set par(justify: true)
@@ -52,4 +52,3 @@
 #include "sections/01_module.typ"
 #include "sections/02_functional_coverage.typ"
 #include "sections/03_test_results.typ"
-#include "sections/04_semantic_validations.typ"
