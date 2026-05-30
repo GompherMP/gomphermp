@@ -10,8 +10,7 @@ import (
 
 // TestEnsureRuntimeImport_AddsToFileWithoutImports verifies that the helper
 // creates a brand-new import declaration when the file does not import
-// anything. This is the simplest input shape and the one that exercises the
-// "no existing block" branch of the helper.
+// anything.
 func TestEnsureRuntimeImport_AddsToFileWithoutImports(t *testing.T) {
 	src := `package main
 
@@ -36,7 +35,7 @@ func main() {}
 // in a row does not produce a duplicate import. Directive handlers will call
 // it unconditionally before emitting their runtime calls, so duplicate
 // protection must live in the helper itself.
-func TestEnsureRuntimeImport_Idempotent(t *testing.T) {
+func TestEnsureRuntimeImportdempotent(t *testing.T) {
 	src := `package main
 
 import "github.com/gomphermp/gomphermp/pkg/runtime"

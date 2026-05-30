@@ -3,7 +3,6 @@ package transformer
 import (
 	"strings"
 	"testing"
-
 	"github.com/gomphermp/gomphermp/internal/parser"
 )
 
@@ -21,9 +20,8 @@ func TestNamer_ProducesUniquePerKind(t *testing.T) {
 }
 
 // TestNamer_IndependentCountersPerKind verifies that the counters for
-// different kinds advance independently, so naming a `for` does not consume
-// a slot in the `parallel` sequence. This keeps the synthesized names
-// readable and predictable.
+// different kinds advance independently, so naming a "for" does not consume
+// a slot in the "parallel" sequence.
 func TestNamer_IndependentCountersPerKind(t *testing.T) {
 	n := newNamer()
 	p := n.next(parser.DirParallel)

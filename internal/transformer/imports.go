@@ -7,21 +7,14 @@ import (
 )
 
 // runtimeImportPath is the canonical import path of the gomphermp runtime.
-// Every transformed directive except `atomic` emits a call into this package,
+// Every transformed directive except "atomic" emits a call into this package,
 // so the transformer must guarantee the file imports it before such calls
 // can compile.
 const runtimeImportPath = "github.com/gomphermp/gomphermp/pkg/runtime"
 
 // ensureRuntimeImport adds an import of the gomphermp runtime to file if it
 // is not already imported. The operation is idempotent: invoking it multiple
-// times on the same file has no additional effect, which lets directive
-// handlers call it unconditionally without coordinating among themselves.
-//
-// If the file already declares an import block, the new import is appended
-// to it; otherwise a new import declaration is inserted right after the
-// package clause. Positions on the synthesized nodes are left zero because
-// the printer (go/format) recomputes whitespace and layout from declaration
-// order, so explicit positions would only constrain the output unnecessarily.
+// times on the same file has no additional effect.
 func ensureRuntimeImport(file *ast.File) {
 	quoted := strconv.Quote(runtimeImportPath)
 

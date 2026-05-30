@@ -9,9 +9,7 @@ import (
 )
 
 // TestTransform_NoDirectives_Passthrough verifies the foundational contract:
-// a file containing no //gompher directives is returned unchanged. This is
-// the regression guard that protects every future directive implementation
-// from accidentally modifying unrelated user code.
+// a file containing no //gompher directives is returned unchanged.
 func TestTransform_NoDirectives_Passthrough(t *testing.T) {
 	src := `package main
 
@@ -45,9 +43,7 @@ func main() {
 }
 
 // TestTransform_NilInput verifies that Transform handles nil input without
-// panicking. The compiler's main may pass nil down degraded paths (for
-// example, when an earlier stage returned an error), so the function should
-// short-circuit cleanly instead of dereferencing the pointer.
+// panicking.
 func TestTransform_NilInput(t *testing.T) {
 	got, err := Transform(nil)
 	if err != nil {
