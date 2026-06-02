@@ -11,13 +11,6 @@ import (
 // runtime.Critical call. The directive's BlockStmt body is wrapped in a
 // closure and passed as the second argument; the lock name (empty for the
 // anonymous variant) is passed as the first argument.
-//
-// Input:                  Output:
-//   //gompher critical    runtime.Critical("", func() {
-//   {                         body
-//       body              })
-//   }
-//
 // The closure preserves the original body unchanged, so variables captured
 // from the enclosing scope continue to work without any special handling —
 // Go closures capture by reference, which is exactly the semantics OpenMP

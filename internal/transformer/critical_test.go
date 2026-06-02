@@ -1,6 +1,7 @@
 package transformer
 
 import (
+	"go/ast"
 	"go/format"
 	"strings"
 	"testing"
@@ -9,9 +10,7 @@ import (
 )
 
 // runTransform is a test helper that parses src, runs the transformer, and
-// returns the formatted output. Failures in parse/transform/format abort the
-// test directly so individual cases can focus on asserting against the
-// output string.
+// returns the formatted output.
 func runTransform(t *testing.T, src string) string {
 	t.Helper()
 
@@ -32,9 +31,8 @@ func runTransform(t *testing.T, src string) string {
 }
 
 // TestTransform_Critical_Anonymous verifies that an anonymous critical
-// (`//gompher critical` with no name) becomes a runtime.Critical call whose
-// first argument is the empty string. This is the most common form and the
-// baseline contract for the directive.
+// ("//gompher critical" with no name) becomes a runtime.Critical call whose
+// first argument is the empty string.
 func TestTransform_Critical_Anonymous(t *testing.T) {
 	src := `package main
 
@@ -58,10 +56,8 @@ func main() {
 }
 
 // TestTransform_Critical_Named verifies that a named critical
-// (`//gompher critical(name)`) passes its lock name as the first argument to
-// runtime.Critical. The runtime treats distinct names as independent locks,
-// so getting the name through correctly is what enables fine-grained mutual
-// exclusion in transpiled programs.
+// ("//gompher critical(name)") passes its lock name as the first argument to
+// runtime.Critical.
 func TestTransform_Critical_Named(t *testing.T) {
 	src := `package main
 
@@ -82,9 +78,7 @@ func main() {
 }
 
 // TestTransform_Critical_AddsRuntimeImport verifies that the runtime import
-// is injected when a critical directive is present. Without this, the
-// transformed file would reference an undefined `runtime` identifier and
-// fail to compile.
+// is injected when a critical directive is present.
 func TestTransform_Critical_AddsRuntimeImport(t *testing.T) {
 	src := `package main
 
@@ -132,10 +126,7 @@ func main() {
 }
 
 // TestTransform_Critical_MultipleInSameFile verifies that two consecutive
-// critical directives both get rewritten correctly. Earlier phases of the
-// transformer iterated through parser.Nodes in order; this test confirms the
-// iteration does not skip or re-process entries when each one mutates the
-// AST in place.
+// critical directives both get rewritten correctly.
 func TestTransform_Critical_MultipleInSameFile(t *testing.T) {
 	src := `package main
 
@@ -164,9 +155,7 @@ func main() {
 
 // TestTransform_Critical_PreservesMultiStmtBody verifies that a body
 // containing multiple statements (declaration, computation, side effect) is
-// preserved verbatim inside the synthesized closure. Bodies are not analyzed
-// in this phase — they are moved wholesale into the closure — so the test
-// confirms there is no accidental reformatting or statement dropping.
+// preserved verbatim inside the synthesized closure.
 func TestTransform_Critical_PreservesMultiStmtBody(t *testing.T) {
 	src := `package main
 
@@ -194,8 +183,7 @@ func main() {
 
 // TestTransform_NoCriticalDirectives_NoRuntimeImport verifies that the
 // runtime import is NOT added when no directive that uses the runtime
-// appears. This is the complement of AddsRuntimeImport and guards against
-// accidentally polluting files that have nothing to transform.
+// appears.
 func TestTransform_NoCriticalDirectives_NoRuntimeImport(t *testing.T) {
 	src := `package main
 
@@ -209,5 +197,73 @@ func main() {
 
 	if strings.Contains(got, "gomphermp/pkg/runtime") {
 		t.Errorf("expected runtime import absent for file with no directives, got:\n%s", got)
+	}
+}
+
+// TestTransformCritical_WrongNodeType verifies that handing transformCritical
+// a directive whose Node is not a *ast.BlockStmt produces an error.
+func TestTransformCritical_WrongNodeType(t *testing.T) {
+	parsed, err := parser.Parse("package main\n")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	bogus := parser.CriticalDirective{
+		Node: &ast.ExprStmt{},
+	}
+
+	err = transformCritical(parsed, bogus)
+	if err == nil {
+		t.Fatal("expected error for non-BlockStmt Node")
+	}
+	if !strings.Contains(err.Error(), "expected *ast.BlockStmt") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+// TestTransformCritical_BodyNotInAST verifies that when the directive's
+// BlockStmt is not actually reachable from the file's AST, the transformer 
+// reports the inconsistency.
+func TestTransformCritical_BodyNotInAST(t *testing.T) {
+	parsed, err := parser.Parse("package main\n")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	detached := &ast.BlockStmt{}
+	bogus := parser.CriticalDirective{
+		Node: detached,
+	}
+
+	err = transformCritical(parsed, bogus)
+	if err == nil {
+		t.Fatal("expected error when body block is detached from AST")
+	}
+	if !strings.Contains(err.Error(), "body block not found") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+// TestTransform_PropagatesCriticalError verifies that when transformCritical
+// fails, Transform stops and propagates the error to the caller rather than
+// returning a partially transformed file.
+func TestTransform_PropagatesCriticalError(t *testing.T) {
+	parsed, err := parser.Parse("package main\n")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	parsed.Nodes = append(parsed.Nodes, parser.AnnotatedNode{
+		Directive: parser.CriticalDirective{
+			Node: &ast.BlockStmt{},
+		},
+	})
+
+	got, err := Transform(parsed)
+	if err == nil {
+		t.Fatal("expected Transform to propagate the underlying error")
+	}
+	if got != nil {
+		t.Errorf("expected nil ParseResult on error, got %v", got)
 	}
 }
