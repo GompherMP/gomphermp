@@ -10,9 +10,7 @@ import (
 
 // TestTransform_Master_BasicRewrite verifies the canonical master
 // transformation: //gompher master { body } becomes
-// runtime.Master(threadID, func() { body }). The threadID identifier is
-// emitted unqualified so it resolves to whichever int parameter is in scope
-// (typically the one introduced by the surrounding runtime.Parallel call).
+// runtime.Master(threadID, func() { body }).
 func TestTransform_Master_BasicRewrite(t *testing.T) {
 	src := `package main
 
@@ -36,9 +34,7 @@ func log_thread_zero() {}
 }
 
 // TestTransform_Master_AddsRuntimeImport verifies that the runtime import
-// is injected when a master directive is rewritten. Master shares the
-// import-injection logic with Critical and Single via Transform's
-// emittedRuntime flag; this test confirms it triggers via the master path.
+// is injected when a master directive is rewritten.
 func TestTransform_Master_AddsRuntimeImport(t *testing.T) {
 	src := `package main
 
@@ -85,10 +81,9 @@ func worker(threadID int) {
 }
 
 // TestTransform_Master_PassesThreadIDByName verifies that the transformer
-// always emits the identifier threadID as the first argument, regardless of
-// any reformatting the body may undergo. The constant threadIDParamName in
-// master.go is the single source of truth; this test asserts it is the name
-// actually emitted in the output.
+// always emits the identifier threadID as the first argument. The constant 
+// threadIDParamName in master.go is the single source of truth. 
+// This test asserts it is the name actually emitted in the output.
 func TestTransform_Master_PassesThreadIDByName(t *testing.T) {
 	src := `package main
 
@@ -132,9 +127,7 @@ func TestTransformMaster_WrongNodeType(t *testing.T) {
 
 // TestTransform_PropagatesMasterError verifies that when transformMaster
 // fails, Transform propagates the error and returns nil instead of a
-// partially transformed file. Mirror of the equivalent contract test for
-// Critical and Single, ensuring the error-handling branch in Transform's
-// dispatch is exercised for MasterDirective.
+// partially transformed file.
 func TestTransform_PropagatesMasterError(t *testing.T) {
 	parsed, err := parser.Parse("package main\n")
 	if err != nil {

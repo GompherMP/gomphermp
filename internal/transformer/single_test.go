@@ -36,8 +36,6 @@ func setup() {}
 
 // TestTransform_Single_AddsRuntimeImport verifies that the runtime import is
 // injected when a single directive appears in a file with no prior imports.
-// Without this, the synthesized runtime.Single call would reference an
-// undefined identifier and the file would not compile.
 func TestTransform_Single_AddsRuntimeImport(t *testing.T) {
 	src := `package main
 
@@ -58,9 +56,7 @@ func work() {}
 }
 
 // TestTransform_Single_PreservesMultiStmtBody verifies that a body with
-// several statements is moved verbatim into the closure. Single's body in
-// OpenMP can be arbitrary code; the transformer must not analyze or rewrite
-// it in this phase.
+// several statements is moved verbatim into the closure.
 func TestTransform_Single_PreservesMultiStmtBody(t *testing.T) {
 	src := `package main
 
@@ -85,11 +81,8 @@ func main() {
 }
 
 // TestTransformSingle_WrongNodeType verifies the defensive error path: when
-// the directive's Node is not a *ast.BlockStmt (which should not happen with
-// a healthy parser), transformSingle returns a descriptive error instead of
-// panicking. Critical, Single and Master share this guard via
-// transformBlockDirective; this test exercises it through the single entry
-// point so the contract is checked end-to-end.
+// the directive's Node is not a *ast.BlockStmt, transformSingle returns 
+// a descriptive error instead of panicking.
 func TestTransformSingle_WrongNodeType(t *testing.T) {
 	parsed, err := parser.Parse("package main\n")
 	if err != nil {
@@ -111,9 +104,7 @@ func TestTransformSingle_WrongNodeType(t *testing.T) {
 
 // TestTransform_PropagatesSingleError verifies that when transformSingle
 // fails, Transform propagates the error and returns nil instead of a
-// partially transformed file. Mirror of the equivalent contract test for
-// Critical, ensuring the error-handling branch in Transform's dispatch is
-// exercised for SingleDirective.
+// partially transformed file.
 func TestTransform_PropagatesSingleError(t *testing.T) {
 	parsed, err := parser.Parse("package main\n")
 	if err != nil {

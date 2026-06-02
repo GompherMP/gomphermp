@@ -98,15 +98,8 @@ func replaceBlockStmt(file *ast.File, target *ast.BlockStmt, replacement ast.Stm
 // transformBlockDirective implements the shared rewrite pattern used by
 // every directive whose Node is a *ast.BlockStmt and whose runtime entry
 // point accepts a parameterless closure: Critical, Single, Master.
-//
-// The pattern is:
-//  1. type-assert the directive's Node into *ast.BlockStmt
-//  2. wrap the body in func() { body }
-//  3. emit runtime.RuntimeFunc(prefixArgs..., closure) as an ExprStmt
-//  4. replace the original block with that ExprStmt
-//  5. strip the //gompher comment so go/format does not leave it orphaned
-//
-// prefixArgs are the arguments that come BEFORE the closure in the runtime
+
+// prefixArgs are the arguments that come before the closure in the runtime
 // call. Critical passes a string literal (the lock name), Master passes the
 // threadID identifier from the enclosing parallel scope, Single passes
 // nothing.
