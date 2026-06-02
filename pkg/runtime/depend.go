@@ -25,9 +25,20 @@ func getOrCreateEntry(addr uintptr) *depEntry {
 	return e
 }
 
+// isClosed reports whether ch has been closed, without blocking.
+func isClosed(ch chan struct{}) bool {
+	select {
+	case <-ch:
+		return true
+	default:
+		return false
+	}
+}
+
 // claimDeps atomically collects the signals this task must wait for and
 // registers done in the registry as writer or reader for each address token.
 // Waiting on the returned signals happens after unlock, inside the goroutine.
+// Stale signals from already-finished tasks are pruned during this call.
 func claimDeps(done chan struct{}, ins, outs, inouts []uintptr) []chan struct{} {
 	depRegistryMu.Lock()
 	defer depRegistryMu.Unlock()
@@ -38,7 +49,11 @@ func claimDeps(done chan struct{}, ins, outs, inouts []uintptr) []chan struct{} 
 	for _, addr := range ins {
 		e := getOrCreateEntry(addr)
 		if e.writerDone != nil {
-			signals = append(signals, e.writerDone)
+			if isClosed(e.writerDone) {
+				e.writerDone = nil // prune: writer already finished
+			} else {
+				signals = append(signals, e.writerDone)
+			}
 		}
 		e.readersDone = append(e.readersDone, done)
 	}
@@ -46,10 +61,14 @@ func claimDeps(done chan struct{}, ins, outs, inouts []uintptr) []chan struct{} 
 	// out: wait for current writer and all active readers; replace as new writer.
 	for _, addr := range outs {
 		e := getOrCreateEntry(addr)
-		if e.writerDone != nil {
+		if e.writerDone != nil && !isClosed(e.writerDone) {
 			signals = append(signals, e.writerDone)
 		}
-		signals = append(signals, e.readersDone...)
+		for _, ch := range e.readersDone {
+			if !isClosed(ch) {
+				signals = append(signals, ch)
+			}
+		}
 		e.writerDone = done
 		e.readersDone = nil
 	}
@@ -57,15 +76,27 @@ func claimDeps(done chan struct{}, ins, outs, inouts []uintptr) []chan struct{} 
 	// inout: same as out — serialises with all prior readers and writers.
 	for _, addr := range inouts {
 		e := getOrCreateEntry(addr)
-		if e.writerDone != nil {
+		if e.writerDone != nil && !isClosed(e.writerDone) {
 			signals = append(signals, e.writerDone)
 		}
-		signals = append(signals, e.readersDone...)
+		for _, ch := range e.readersDone {
+			if !isClosed(ch) {
+				signals = append(signals, ch)
+			}
+		}
 		e.writerDone = done
 		e.readersDone = nil
 	}
 
 	return signals
+}
+
+// resetDeps clears the dependency registry. Safe to call only once all tasks
+// that registered dependency tokens have finished (guaranteed at Taskgroup exit).
+func resetDeps() {
+	depRegistryMu.Lock()
+	depRegistry = make(map[uintptr]*depEntry)
+	depRegistryMu.Unlock()
 }
 
 // TaskWithDepend submits body as a task with data-flow dependency ordering.
