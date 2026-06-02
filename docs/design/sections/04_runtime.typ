@@ -17,13 +17,22 @@ A continuación se muestra un diagrama explicativo sobre el funcionamiento de es
 
 == Planificador de Tareas
 
-Para dar soporte al paralelismo no estructurado (mediante directivas como task y taskwait), el runtime incluye un planificador asíncrono especializado. Este componente mantiene una cola de tareas concurrente y un motor de resolución de dependencias. Cuando el desarrollador utiliza la cláusula depend(in, out), el planificador construye un grafo de dependencias acíclico dirigido (DAG) en tiempo de ejecución. Este motor asegura que una tarea no sea extraída de la cola ni asignada a una goroutine ociosa del pool hasta que todos sus pre-requisitos de memoria hayan sido satisfechos.
+Para dar soporte al paralelismo no estructurado (mediante directivas como `task`, `taskwait` y `taskgroup`), el runtime incluye un motor de resolución de dependencias. Cuando el desarrollador utiliza la cláusula `depend(in, out, inout)`, este motor garantiza que las tareas respeten las relaciones de orden sobre los datos compartidos, modeladas conceptualmente como un grafo de dependencias acíclico dirigido (DAG): cada tarea es un nodo y cada relación de precedencia entre accesos a memoria es una arista.
 
-A continuación se muestra un ejemplo de un grafo acíclico dirigido (DAG) que representa las dependencias entre tareas para un proceso de transformación y agregación de datos genérico:
+Sin embargo, la implementación no construye dicho grafo de forma explícita. En su lugar, se emplea un esquema de *seguimiento por frontera* (_frontier-based tracking_): por cada token de variable (la dirección de memoria utilizada como clave de correlación), el motor mantiene únicamente dos piezas de información: la señal de completitud de la última tarea escritora y el conjunto de señales de las tareas lectoras activas en ese momento. Esta frontera es el mínimo de información necesaria para tomar una decisión de despacho correcta, sin necesidad de almacenar el historial completo de dependencias.
+
+Cuando se registra una nueva tarea con cláusulas `depend`, el motor realiza atómicamente las siguientes dos acciones:
+
++ *Recopila las señales de espera:* según el rol de la tarea para cada token (`in`, `out` o `inout`), determina qué tareas predecesoras deben haber concluido antes de que esta pueda ejecutar su cuerpo.
++ *Actualiza la frontera:* registra la señal de completitud de la nueva tarea como la nueva referencia de escritora o lectora activa para ese token.
+
+La espera efectiva sobre estas señales ocurre dentro de la propia goroutine de la tarea, inmediatamente antes de ejecutar su cuerpo. Esto garantiza el orden _happens-before_ correcto para todas las combinaciones de dependencias sin requerir un grafo en memoria.
+
+A continuación se muestra un ejemplo de las relaciones de orden entre tareas que este motor garantiza, representadas como el DAG conceptual que el esquema de frontera reproduce implícitamente:
 
 #figure(
   image("../assets/tasks_dag.png", width: 100%),
   caption: [
-    Grafo acíclico dirigido (DAG) de tareas
+    Grafo acíclico dirigido (DAG) de dependencias entre tareas
   ],
 )
