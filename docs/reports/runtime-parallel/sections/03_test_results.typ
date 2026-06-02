@@ -14,7 +14,7 @@ La verificación de la suite se realizó en dos pasos. Primero se ejecutó `go t
     [Pruebas fallidas],                                     [0],
     [Pruebas exitosas con detector de carreras activo],     [43],
     [Cobertura total de instrucciones],                     [100.0%],
-    [Funciones del módulo con cobertura del 100%],          [18 de 18],
+    [Funciones del módulo con cobertura del 100%],          [17 de 17],
   ),
   caption: [Resumen cuantitativo de la ejecución de la suite],
 )
@@ -50,7 +50,6 @@ La verificación de la suite se realizó en dos pasos. Primero se ejecutó `go t
     [`ParallelFor`],          [100.0%],
     [`ForDynamic`],           [100.0%],
     [`Sections`],             [100.0%],
-    [`getGoroutineID`],       [100.0%],
     [`registerInTeam`],       [100.0%],
     [`unregisterFromTeam`],   [100.0%],
     [`getCurrentTeam`],       [100.0%],
@@ -74,16 +73,15 @@ A continuación se reproduce la salida del comando `go tool cover -func=runtime_
 
 #figure(
   ```
-pkg/runtime/parallel.go:31:    getGoroutineID         100.0%
-pkg/runtime/parallel.go:42:    registerInTeam         100.0%
-pkg/runtime/parallel.go:52:    unregisterFromTeam     100.0%
-pkg/runtime/parallel.go:61:    getCurrentTeam         100.0%
-pkg/runtime/parallel.go:71:    newTeam                100.0%
-pkg/runtime/parallel.go:85:    Parallel               100.0%
-pkg/runtime/parallel.go:118:   For                    100.0%
-pkg/runtime/parallel.go:157:   ParallelFor            100.0%
-pkg/runtime/parallel.go:197:   ForDynamic             100.0%
-pkg/runtime/parallel.go:240:   Sections               100.0%
+pkg/runtime/parallel.go:26:    registerInTeam         100.0%
+pkg/runtime/parallel.go:36:    unregisterFromTeam     100.0%
+pkg/runtime/parallel.go:45:    getCurrentTeam         100.0%
+pkg/runtime/parallel.go:55:    newTeam                100.0%
+pkg/runtime/parallel.go:69:    Parallel               100.0%
+pkg/runtime/parallel.go:102:   For                    100.0%
+pkg/runtime/parallel.go:141:   ParallelFor            100.0%
+pkg/runtime/parallel.go:181:   ForDynamic             100.0%
+pkg/runtime/parallel.go:224:   Sections               100.0%
 pkg/runtime/pool.go:40:        init                   100.0%
 pkg/runtime/pool.go:47:        newPool                100.0%
 pkg/runtime/pool.go:64:        poolWorker             100.0%
@@ -92,7 +90,6 @@ pkg/runtime/pool.go:84:        getPool                100.0%
 pkg/runtime/pool.go:92:        PoolSize               100.0%
 pkg/runtime/pool.go:98:        CurrentTeamSize        100.0%
 pkg/runtime/pool.go:109:       SetPoolSize            100.0%
-total:                         (statements)           100.0%
   ```,
   caption: [Salida del comando `go tool cover -func=runtime_cov.out` filtrada al módulo],
 )

@@ -268,3 +268,139 @@ func TestTaskloop_GrainsizeLargerThanIterations(t *testing.T) {
 		t.Errorf("expected %d iterations, got %d", iterations, counter)
 	}
 }
+
+// TestTaskloop_SingleIteration verifies that a single-iteration Taskloop executes
+// exactly once and delivers index 0 to the body.
+func TestTaskloop_SingleIteration(t *testing.T) {
+	var counter int64
+	var receivedIndex int64
+
+	Taskgroup(func() {
+		Taskloop(func(i int) {
+			atomic.AddInt64(&counter, 1)
+			atomic.StoreInt64(&receivedIndex, int64(i))
+		}, 1, 1)
+	})
+
+	if counter != 1 {
+		t.Errorf("expected exactly 1 iteration, got %d", counter)
+	}
+	if receivedIndex != 0 {
+		t.Errorf("expected index 0, got %d", receivedIndex)
+	}
+}
+
+// TestTask_OutsideTaskContext verifies Task can be called outside any Taskgroup.
+// The spawned goroutine must still execute even with no parent task context.
+func TestTask_OutsideTaskContext(t *testing.T) {
+	done := make(chan struct{})
+
+	Task(func() {
+		close(done)
+	})
+
+	select {
+	case <-done:
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("Task body did not execute when called outside a task context")
+	}
+}
+
+// TestTaskwait_DoesNotWaitGrandchildren verifies that Taskwait returns as soon
+// as direct children are done, even if their children (grandchildren) are still
+// running. Designed as a deadlock trap: if Taskwait mistakenly waited for the
+// grandchild, unblock would never be closed and the test would hang.
+func TestTaskwait_DoesNotWaitGrandchildren(t *testing.T) {
+	grandchildSubmitted := make(chan struct{})
+	unblock := make(chan struct{})
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		Taskgroup(func() {
+			Task(func() {
+				Task(func() { <-unblock }) // grandchild blocks indefinitely
+				close(grandchildSubmitted) // signal: grandchild is live
+			})
+			<-grandchildSubmitted // ensure grandchild submitted before Taskwait
+			Taskwait()            // must return once the direct child is done
+			close(unblock)        // only reachable if Taskwait did not wait for grandchild
+		})
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("deadlock: Taskwait likely waited for grandchildren instead of direct children only")
+	}
+}
+
+// TestTaskgroup_Nested verifies that a Taskgroup invoked inside a Task waits
+// for its own subtasks before returning, so the outer task can observe the
+// inner results immediately after the inner Taskgroup call.
+func TestTaskgroup_Nested(t *testing.T) {
+	var innerResult, outerResult int64
+
+	Taskgroup(func() {
+		Task(func() {
+			Taskgroup(func() {
+				Task(func() {
+					time.Sleep(10 * time.Millisecond)
+					atomic.StoreInt64(&innerResult, 1)
+				})
+			})
+			// Inner Taskgroup has returned, so innerResult must be 1.
+			atomic.StoreInt64(&outerResult, atomic.LoadInt64(&innerResult))
+		})
+	})
+
+	if atomic.LoadInt64(&innerResult) != 1 {
+		t.Error("inner task did not complete before inner Taskgroup returned")
+	}
+	if atomic.LoadInt64(&outerResult) != 1 {
+		t.Error("outer task did not observe inner result after inner Taskgroup")
+	}
+}
+
+// TestTaskgroup_NoDeadlock verifies Taskgroup completes in finite time when
+// spawning a large number of tasks.
+func TestTaskgroup_NoDeadlock(t *testing.T) {
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		Taskgroup(func() {
+			for i := 0; i < 100; i++ {
+				Task(func() {})
+			}
+		})
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Taskgroup deadlocked with 100 concurrent tasks")
+	}
+}
+
+// TestTask_StressNoRace spawns 1000 tasks, each incrementing a dedicated slot,
+// and verifies every slot is incremented exactly once with no data races.
+func TestTask_StressNoRace(t *testing.T) {
+	const n = 1000
+	results := make([]int64, n)
+
+	Taskgroup(func() {
+		for i := 0; i < n; i++ {
+			i := i
+			Task(func() {
+				atomic.AddInt64(&results[i], 1)
+			})
+		}
+	})
+
+	for i := 0; i < n; i++ {
+		if results[i] != 1 {
+			t.Errorf("task %d ran %d times, expected exactly 1", i, results[i])
+		}
+	}
+}
