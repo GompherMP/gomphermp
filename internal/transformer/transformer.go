@@ -28,6 +28,16 @@ func Transform(result *parser.ParseResult) (*parser.ParseResult, error) {
 				return nil, err
 			}
 			emittedRuntime = true
+		case parser.SingleDirective:
+			if err := transformSingle(result, d); err != nil {
+				return nil, err
+			}
+			emittedRuntime = true
+		case parser.MasterDirective:
+			if err := transformMaster(result, d); err != nil {
+				return nil, err
+			}
+			emittedRuntime = true
 		}
 	}
 
