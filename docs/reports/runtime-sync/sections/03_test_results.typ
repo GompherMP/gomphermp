@@ -62,7 +62,6 @@ pkg/runtime/sync.go:33:    getNamedLock           100.0%
 pkg/runtime/sync.go:51:    Single                 100.0%
 pkg/runtime/sync.go:57:    Master                 100.0%
 pkg/runtime/sync.go:65:    Barrier                100.0%
-total:                     (statements)           100.0%
   ```,
   caption: [Salida del comando `go tool cover -func=runtime_cov.out` filtrada al módulo],
 )
