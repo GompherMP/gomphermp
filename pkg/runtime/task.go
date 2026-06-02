@@ -2,7 +2,12 @@ package runtime
 
 import (
 	"sync"
+	"sync/atomic"
 )
+
+// taskgroupDepth tracks nested Taskgroup call depth so resetDeps is only
+// called when the outermost group exits (all tasks are guaranteed finished).
+var taskgroupDepth int64
 
 // taskHandle holds synchronization state for a single task.
 type taskHandle struct {
@@ -104,12 +109,16 @@ func Taskwait() {
 // Taskgroup executes body and blocks until all tasks spawned within it —
 // including tasks spawned by those tasks at any depth — have finished.
 func Taskgroup(body func()) {
+	atomic.AddInt64(&taskgroupDepth, 1)
 	h := newHandle()
 	registerTask(h)
 	body()
 	unregisterTask()
 	close(h.done)
 	waitSubtree(h)
+	if atomic.AddInt64(&taskgroupDepth, -1) == 0 {
+		resetDeps()
+	}
 }
 
 // Taskloop distributes [0, iterations) as tasks, one per chunk of grainsize.
