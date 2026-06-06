@@ -35,7 +35,7 @@ Ocurren en la fase final, cuando el CLI invoca a `go build` utilizando el códig
   $ gompher build -v algoritmo.go
   [INFO] Analizando AST de algoritmo.go...` \
   [INFO] Directiva 'parallel for' detectada en línea 22.
-  [INFO] Transformando bloque a función encapsulada (Hash: dab070c2...).
+
   [INFO] Generando código temporal...
   [INFO] Ejecutando go build...
   [EXITO] Binario generado: ./algoritmo

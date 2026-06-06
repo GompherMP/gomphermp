@@ -11,7 +11,7 @@ El código fuente es procesado por el *Parser*, el cual genera una representaci�
 == Transformación Semántica (Módulo Transformer)
 El *Transformer* inspecciona el AST en busca de directivas y cláusulas. Al detectar un constructo (como `parallel for`), realiza las siguientes acciones:
 - Valida la sintaxis específica de la directiva y sus cláusulas asociadas.
-- Extrae el bloque de código y lo encapsula en una *k-función* con un identificador único (hash) para evitar colisiones de nombres.
+- Extrae el bloque de código y lo encapsula en una función anónima (closure).
 - Inyecta las llamadas al Runtime de GompherMP, pasando como argumento la función encapsulada y los parámetros de gestión de datos (`private`, `shared`, `reduction`).
 
 == Generación de Código (Módulo Printer)

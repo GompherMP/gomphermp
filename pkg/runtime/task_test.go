@@ -35,7 +35,7 @@ func TestTask_IsAsync(t *testing.T) {
 
 	select {
 	case <-returned:
-		// Task() returned before body finished — correct
+		// Task() returned before body finished - correct
 	case <-time.After(200 * time.Millisecond):
 		t.Fatal("Task() blocked the caller instead of returning immediately")
 	}
@@ -117,7 +117,7 @@ func TestTaskwait_NoopOutsideTask(t *testing.T) {
 
 	select {
 	case <-done:
-		// Returned immediately — correct
+		// Returned immediately - correct
 	case <-time.After(200 * time.Millisecond):
 		t.Fatal("Taskwait blocked outside task context")
 	}

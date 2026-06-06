@@ -54,7 +54,7 @@ func unregisterTask() {
 }
 
 // waitSubtree recursively waits for h and all its descendants to finish.
-// Safe to call after h.done is already closed — proceeds immediately to children.
+// Safe to call after h.done is already closed - proceeds immediately to children.
 func waitSubtree(h *taskHandle) {
 	<-h.done
 	h.mu.Lock()
@@ -106,8 +106,8 @@ func Taskwait() {
 	}
 }
 
-// Taskgroup executes body and blocks until all tasks spawned within it —
-// including tasks spawned by those tasks at any depth — have finished.
+// Taskgroup executes body and blocks until all tasks spawned within it -
+// including tasks spawned by those tasks at any depth - have finished.
 func Taskgroup(body func()) {
 	atomic.AddInt64(&taskgroupDepth, 1)
 	h := newHandle()
