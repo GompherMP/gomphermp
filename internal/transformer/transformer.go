@@ -38,6 +38,26 @@ func Transform(result *parser.ParseResult) (*parser.ParseResult, error) {
 				return nil, err
 			}
 			emittedRuntime = true
+		case parser.TaskDirective:
+			if err := transformTask(result, d); err != nil {
+				return nil, err
+			}
+			emittedRuntime = true
+		case parser.TaskwaitDirective:
+			if err := transformTaskwait(result, d); err != nil {
+				return nil, err
+			}
+			emittedRuntime = true
+		case parser.TaskgroupDirective:
+			if err := transformTaskgroup(result, d); err != nil {
+				return nil, err
+			}
+			emittedRuntime = true
+		case parser.TaskloopDirective:
+			if err := transformTaskloop(result, d); err != nil {
+				return nil, err
+			}
+			emittedRuntime = true
 		}
 	}
 

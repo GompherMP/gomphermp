@@ -9,6 +9,8 @@ import (
 	"github.com/gomphermp/gomphermp/internal/parser"
 )
 
+const unsafeImportPath = "unsafe"
+
 // runtimePkg is the local identifier used to reference the gomphermp runtime
 // in transformed code.
 const runtimePkg = "runtime"
@@ -125,6 +127,131 @@ func transformBlockDirective(
 	removeDirectiveComment(file.File, dirPos)
 
 	return nil
+}
+
+// insertCallAtPos finds the innermost *ast.BlockStmt in file that contains
+// dirPos (i.e. Lbrace < dirPos < Rbrace) and inserts call at the correct
+// position within that block: before the first statement that begins after
+// dirPos, or appended at the end if the directive is the last thing in the
+// block. Used by point directives that have no associated AST node (Taskwait,
+// Barrier).
+func insertCallAtPos(file *ast.File, dirPos token.Pos, call ast.Stmt) bool {
+	var candidates []*ast.BlockStmt
+	ast.Inspect(file, func(n ast.Node) bool {
+		block, ok := n.(*ast.BlockStmt)
+		if !ok {
+			return true
+		}
+		if block.Lbrace < dirPos && dirPos < block.Rbrace {
+			candidates = append(candidates, block)
+		}
+		return true
+	})
+
+	if len(candidates) == 0 {
+		return false
+	}
+
+	innermost := candidates[0]
+	for _, b := range candidates[1:] {
+		if b.Lbrace > innermost.Lbrace {
+			innermost = b
+		}
+	}
+
+	for i, stmt := range innermost.List {
+		if stmt.Pos() > dirPos {
+			newList := make([]ast.Stmt, 0, len(innermost.List)+1)
+			newList = append(newList, innermost.List[:i]...)
+			newList = append(newList, call)
+			newList = append(newList, innermost.List[i:]...)
+			innermost.List = newList
+			return true
+		}
+	}
+	innermost.List = append(innermost.List, call)
+	return true
+}
+
+// buildUintptrSlice builds the AST for []uintptr{uintptr(unsafe.Pointer(&v))...}.
+// Returns a nil identifier when vars is empty so the call site stays readable.
+func buildUintptrSlice(vars []string) ast.Expr {
+	if len(vars) == 0 {
+		return &ast.Ident{Name: "nil"}
+	}
+	elts := make([]ast.Expr, len(vars))
+	for i, v := range vars {
+		elts[i] = buildUintptrOfVar(v)
+	}
+	return &ast.CompositeLit{
+		Type: &ast.ArrayType{Elt: &ast.Ident{Name: "uintptr"}},
+		Elts: elts,
+	}
+}
+
+// buildUintptrOfVar returns the AST for uintptr(unsafe.Pointer(&name)).
+func buildUintptrOfVar(name string) ast.Expr {
+	return &ast.CallExpr{
+		Fun: &ast.Ident{Name: "uintptr"},
+		Args: []ast.Expr{
+			&ast.CallExpr{
+				Fun: &ast.SelectorExpr{
+					X:   &ast.Ident{Name: "unsafe"},
+					Sel: &ast.Ident{Name: "Pointer"},
+				},
+				Args: []ast.Expr{
+					&ast.UnaryExpr{
+						Op: token.AND,
+						X:  &ast.Ident{Name: name},
+					},
+				},
+			},
+		},
+	}
+}
+
+// ensureUnsafeImport adds an import of "unsafe" to file if not already present.
+// Follows the same idempotent pattern as ensureRuntimeImport.
+func ensureUnsafeImport(file *ast.File) {
+	quoted := strconv.Quote(unsafeImportPath)
+
+	for _, imp := range file.Imports {
+		if imp.Path != nil && imp.Path.Value == quoted {
+			return
+		}
+	}
+
+	newImport := &ast.ImportSpec{
+		Path: &ast.BasicLit{
+			Kind:  token.STRING,
+			Value: quoted,
+		},
+	}
+
+	var importDecl *ast.GenDecl
+	for _, decl := range file.Decls {
+		if gd, ok := decl.(*ast.GenDecl); ok && gd.Tok == token.IMPORT {
+			importDecl = gd
+			break
+		}
+	}
+
+	if importDecl == nil {
+		importDecl = &ast.GenDecl{
+			Tok:    token.IMPORT,
+			Lparen: token.NoPos,
+			Specs:  []ast.Spec{newImport},
+		}
+		file.Decls = append([]ast.Decl{importDecl}, file.Decls...)
+	} else {
+		importDecl.Specs = append(importDecl.Specs, newImport)
+		if importDecl.Lparen == token.NoPos {
+			importDecl.Lparen = importDecl.TokPos + 1
+			importDecl.Rparen = importDecl.TokPos + 2
+		}
+	}
+
+	file.Imports = append(file.Imports, newImport)
 }
 
 // removeDirectiveComment strips the //gompher comment group anchored at
