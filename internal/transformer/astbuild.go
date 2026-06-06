@@ -254,6 +254,135 @@ func ensureUnsafeImport(file *ast.File) {
 	file.Imports = append(file.Imports, newImport)
 }
 
+// replaceBlockStmtWithPrefix walks file looking for the parent BlockStmt that
+// contains target as a direct child, then atomically replaces target with
+// prefix stmts followed by replacement. Used by firstprivate to inject the
+// capture assignment (_fp_x := x) immediately before the Task call in one pass.
+func replaceBlockStmtWithPrefix(file *ast.File, target *ast.BlockStmt, replacement ast.Stmt, prefix []ast.Stmt) bool {
+	var replaced bool
+	ast.Inspect(file, func(n ast.Node) bool {
+		if replaced {
+			return false
+		}
+		block, ok := n.(*ast.BlockStmt)
+		if !ok {
+			return true
+		}
+		for i, stmt := range block.List {
+			if inner, ok := stmt.(*ast.BlockStmt); ok && inner == target {
+				newList := make([]ast.Stmt, 0, len(block.List)+len(prefix))
+				newList = append(newList, block.List[:i]...)
+				newList = append(newList, prefix...)
+				newList = append(newList, replacement)
+				newList = append(newList, block.List[i+1:]...)
+				block.List = newList
+				replaced = true
+				return false
+			}
+		}
+		return true
+	})
+	return replaced
+}
+
+// findVarType walks file collecting all explicit-type declarations of varName
+// whose position precedes beforePos, and returns the type expression of the
+// closest (latest) one. Handles var declarations and function parameters.
+// Returns a descriptive error when no explicit-type declaration is found,
+// guiding the user to add one.
+func findVarType(file *ast.File, varName string, beforePos token.Pos) (ast.Expr, error) {
+	var found ast.Expr
+	var foundPos token.Pos
+
+	ast.Inspect(file, func(n ast.Node) bool {
+		if n == nil {
+			return false
+		}
+		switch decl := n.(type) {
+		case *ast.GenDecl:
+			if decl.Tok != token.VAR {
+				return true
+			}
+			for _, spec := range decl.Specs {
+				vs, ok := spec.(*ast.ValueSpec)
+				if !ok || vs.Type == nil || vs.Pos() >= beforePos {
+					continue
+				}
+				for _, name := range vs.Names {
+					if name.Name == varName && vs.Pos() > foundPos {
+						found = vs.Type
+						foundPos = vs.Pos()
+					}
+				}
+			}
+		case *ast.FuncDecl:
+			if decl.Type == nil || decl.Type.Params == nil {
+				return true
+			}
+			for _, field := range decl.Type.Params.List {
+				if field.Type == nil || field.Pos() >= beforePos {
+					continue
+				}
+				for _, name := range field.Names {
+					if name.Name == varName && field.Pos() > foundPos {
+						found = field.Type
+						foundPos = field.Pos()
+					}
+				}
+			}
+		}
+		return true
+	})
+
+	if found == nil {
+		return nil, fmt.Errorf("private clause: cannot determine type of %q — use an explicit 'var %s T' declaration", varName, varName)
+	}
+	return found, nil
+}
+
+// buildPrivateVarDecl builds "var name T" as a DeclStmt using typeExpr
+// verbatim from the AST. The zero value of T shadows any outer variable of
+// the same name inside the closure.
+func buildPrivateVarDecl(name string, typeExpr ast.Expr) *ast.DeclStmt {
+	return &ast.DeclStmt{
+		Decl: &ast.GenDecl{
+			Tok: token.VAR,
+			Specs: []ast.Spec{
+				&ast.ValueSpec{
+					Names: []*ast.Ident{{Name: name}},
+					Type:  typeExpr,
+				},
+			},
+		},
+	}
+}
+
+// buildFirstprivateCapture builds "_fp_x, _fp_y := x, y" — a DEFINE
+// assignment that snapshots the current values of vars before the goroutine
+// starts. Injected into the surrounding block immediately before the Task call.
+func buildFirstprivateCapture(vars []string) *ast.AssignStmt {
+	lhs := make([]ast.Expr, len(vars))
+	rhs := make([]ast.Expr, len(vars))
+	for i, v := range vars {
+		lhs[i] = &ast.Ident{Name: "_fp_" + v}
+		rhs[i] = &ast.Ident{Name: v}
+	}
+	return &ast.AssignStmt{Lhs: lhs, Tok: token.DEFINE, Rhs: rhs}
+}
+
+// buildFirstprivateShadow builds "x, y := _fp_x, _fp_y" — prepended at the
+// top of the closure body so the original names refer to the captured copies
+// rather than the outer variables captured by reference.
+func buildFirstprivateShadow(vars []string) *ast.AssignStmt {
+	lhs := make([]ast.Expr, len(vars))
+	rhs := make([]ast.Expr, len(vars))
+	for i, v := range vars {
+		lhs[i] = &ast.Ident{Name: v}
+		rhs[i] = &ast.Ident{Name: "_fp_" + v}
+	}
+	return &ast.AssignStmt{Lhs: lhs, Tok: token.DEFINE, Rhs: rhs}
+}
+
 // removeDirectiveComment strips the //gompher comment group anchored at
 // dirPos from file.Comments.
 func removeDirectiveComment(file *ast.File, dirPos token.Pos) {
