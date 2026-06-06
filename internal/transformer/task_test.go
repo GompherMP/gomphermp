@@ -587,3 +587,237 @@ func TestTransform_PropagatesTaskError(t *testing.T) {
 		t.Errorf("expected nil ParseResult on error, got %v", got)
 	}
 }
+
+// --- private clause tests ---
+
+// TestTransform_Task_Private_Basic verifies that private(x) on a task with an
+// explicit var declaration emits "var x int" at the top of the closure body,
+// zero-initializing the variable and shadowing the outer x.
+func TestTransform_Task_Private_Basic(t *testing.T) {
+	src := `package main
+
+func main() {
+	var x int = 99
+	//gompher task private(x)
+	{
+		x = 0
+	}
+}
+`
+	got := runTransform(t, src)
+
+	if !strings.Contains(got, "var x int") {
+		t.Errorf("expected 'var x int' in closure body, got:\n%s", got)
+	}
+	if !strings.Contains(got, "runtime.Task(func() {") {
+		t.Errorf("expected runtime.Task(func() {...}), got:\n%s", got)
+	}
+}
+
+// TestTransform_Task_Private_FuncParam verifies that private(x) finds the
+// type from a function parameter list when the variable is a param.
+func TestTransform_Task_Private_FuncParam(t *testing.T) {
+	src := `package main
+
+func work(x int) {
+	//gompher task private(x)
+	{
+		x = 0
+	}
+}
+`
+	got := runTransform(t, src)
+
+	if !strings.Contains(got, "var x int") {
+		t.Errorf("expected 'var x int' from func param type, got:\n%s", got)
+	}
+}
+
+// TestTransform_Task_Private_MultipleVars verifies that private(a, b) emits a
+// separate var declaration for each variable in the closure body.
+func TestTransform_Task_Private_MultipleVars(t *testing.T) {
+	src := `package main
+
+func main() {
+	var a int
+	var b string
+	//gompher task private(a, b)
+	{
+		_ = a
+		_ = b
+	}
+}
+`
+	got := runTransform(t, src)
+
+	if !strings.Contains(got, "var a int") {
+		t.Errorf("expected 'var a int' in output, got:\n%s", got)
+	}
+	if !strings.Contains(got, "var b string") {
+		t.Errorf("expected 'var b string' in output, got:\n%s", got)
+	}
+}
+
+// TestTransform_Task_Private_ShortDecl_Error verifies that private(x) on a
+// variable declared with := (no explicit type) returns a clear error.
+func TestTransform_Task_Private_ShortDecl_Error(t *testing.T) {
+	src := `package main
+
+func main() {
+	x := 5
+	//gompher task private(x)
+	{
+		_ = x
+	}
+}
+`
+	parsed, err := parser.Parse(src)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	_, err = Transform(parsed)
+	if err == nil {
+		t.Fatal("expected error for short-decl variable with private clause")
+	}
+	if !strings.Contains(err.Error(), "explicit") {
+		t.Errorf("expected error to mention 'explicit', got: %v", err)
+	}
+}
+
+// TestTransform_Task_Shared_Ignored verifies that shared(x) produces the same
+// output as a plain //gompher task — it is silently ignored because Go closures
+// already share variables by reference.
+func TestTransform_Task_Shared_Ignored(t *testing.T) {
+	withShared := `package main
+
+func main() {
+	//gompher task shared(result)
+	{
+		work()
+	}
+}
+
+func work() {}
+`
+	got := runTransform(t, withShared)
+
+	if !strings.Contains(got, "runtime.Task(func() {") {
+		t.Errorf("expected runtime.Task in shared output, got:\n%s", got)
+	}
+	// No capture variables or shadow declarations should be emitted.
+	if strings.Contains(got, "_fp_") {
+		t.Errorf("shared clause should not emit firstprivate capture, got:\n%s", got)
+	}
+}
+
+// --- firstprivate clause tests ---
+
+// TestTransform_Task_Firstprivate_Basic verifies that firstprivate(i) emits
+// "_fp_i := i" before the Task call and "i := _fp_i" inside the closure body.
+func TestTransform_Task_Firstprivate_Basic(t *testing.T) {
+	src := `package main
+
+func main() {
+	i := 0
+	//gompher task firstprivate(i)
+	{
+		work(i)
+	}
+}
+
+func work(i int) {}
+`
+	got := runTransform(t, src)
+
+	if !strings.Contains(got, "_fp_i := i") {
+		t.Errorf("expected capture '_fp_i := i' before Task call, got:\n%s", got)
+	}
+	if !strings.Contains(got, "i := _fp_i") {
+		t.Errorf("expected shadow 'i := _fp_i' inside closure, got:\n%s", got)
+	}
+	if !strings.Contains(got, "runtime.Task(func() {") {
+		t.Errorf("expected runtime.Task in output, got:\n%s", got)
+	}
+}
+
+// TestTransform_Task_Firstprivate_MultipleVars verifies that firstprivate(a, b)
+// emits a single multi-assign capture and a single multi-assign shadow.
+func TestTransform_Task_Firstprivate_MultipleVars(t *testing.T) {
+	src := `package main
+
+func main() {
+	a := 1
+	b := 2
+	//gompher task firstprivate(a, b)
+	{
+		work(a, b)
+	}
+}
+
+func work(a, b int) {}
+`
+	got := runTransform(t, src)
+
+	if !strings.Contains(got, "_fp_a") || !strings.Contains(got, "_fp_b") {
+		t.Errorf("expected capture vars _fp_a and _fp_b, got:\n%s", got)
+	}
+	// Shadow is emitted as a single multi-assign: "a, b := _fp_a, _fp_b"
+	if !strings.Contains(got, "_fp_a, _fp_b") {
+		t.Errorf("expected multi-assign shadow '_fp_a, _fp_b', got:\n%s", got)
+	}
+}
+
+// TestTransform_Task_Firstprivate_LoopCapture verifies the canonical use case:
+// firstprivate(i) inside a loop ensures each task sees its own copy of i
+// rather than the final loop value.
+func TestTransform_Task_Firstprivate_LoopCapture(t *testing.T) {
+	src := `package main
+
+func main() {
+	for i := 0; i < 3; i++ {
+		//gompher task firstprivate(i)
+		{
+			work(i)
+		}
+	}
+}
+
+func work(i int) {}
+`
+	got := runTransform(t, src)
+
+	if !strings.Contains(got, "_fp_i := i") {
+		t.Errorf("expected capture '_fp_i := i' in loop body, got:\n%s", got)
+	}
+	if !strings.Contains(got, "i := _fp_i") {
+		t.Errorf("expected shadow 'i := _fp_i' inside closure, got:\n%s", got)
+	}
+}
+
+// TestTransform_Task_Firstprivate_And_Depend verifies that firstprivate and
+// depend clauses coexist: output uses TaskWithDepend with capture/shadow.
+func TestTransform_Task_Firstprivate_And_Depend(t *testing.T) {
+	src := `package main
+
+func main() {
+	i := 0
+	var data int
+	//gompher task firstprivate(i) depend(out:data)
+	{
+		data = i
+	}
+}
+`
+	got := runTransform(t, src)
+
+	if !strings.Contains(got, "runtime.TaskWithDepend(") {
+		t.Errorf("expected TaskWithDepend in output, got:\n%s", got)
+	}
+	if !strings.Contains(got, "_fp_i := i") {
+		t.Errorf("expected firstprivate capture, got:\n%s", got)
+	}
+	if !strings.Contains(got, "i := _fp_i") {
+		t.Errorf("expected firstprivate shadow, got:\n%s", got)
+	}
+}
