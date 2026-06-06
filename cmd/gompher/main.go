@@ -46,7 +46,7 @@ func runBuild(args []string) {
 	fs.BoolVar(&keepTemp, "k", false, "preserve intermediate .go file after compilation (shorthand)")
 
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "Usage: gompher build [options] <file.go>\n\nOptions:\n")
+		fmt.Fprintf(fs.Output(), "GompherMP CLI - Structured parallelism transpiler for Go\nUsage: gompher build [options] <file.go>\n\nOptions:\n")
 		fs.PrintDefaults()
 	}
 
