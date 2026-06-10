@@ -70,6 +70,18 @@ func buildStringLit(s string) *ast.BasicLit {
 	}
 }
 
+// buildFuncSlice builds a `[]func(){ elems... }` composite literal. Used by the
+// sections directive to pass its per-section closures to runtime.Sections,
+// whose parameter type is []func().
+func buildFuncSlice(elems []ast.Expr) *ast.CompositeLit {
+	return &ast.CompositeLit{
+		Type: &ast.ArrayType{
+			Elt: &ast.FuncType{Params: &ast.FieldList{}},
+		},
+		Elts: elems,
+	}
+}
+
 // replaceBlockStmt walks file's AST looking for target and substitutes
 // it with replacement. Returns true if the target
 // was found and replaced. Every directive whose Node is an *ast.BlockStmt
