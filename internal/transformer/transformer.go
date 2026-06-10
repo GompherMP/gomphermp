@@ -23,6 +23,21 @@ func Transform(result *parser.ParseResult) (*parser.ParseResult, error) {
 	var emittedRuntime bool
 	for _, node := range result.Nodes {
 		switch d := node.Directive.(type) {
+		case parser.ParallelDirective:
+			if err := transformParallel(result, d); err != nil {
+				return nil, err
+			}
+			emittedRuntime = true
+		case parser.ForDirective:
+			if err := transformFor(result, d); err != nil {
+				return nil, err
+			}
+			emittedRuntime = true
+		case parser.ParallelForDirective:
+			if err := transformParallelFor(result, d); err != nil {
+				return nil, err
+			}
+			emittedRuntime = true
 		case parser.CriticalDirective:
 			if err := transformCritical(result, d); err != nil {
 				return nil, err
