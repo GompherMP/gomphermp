@@ -46,19 +46,31 @@ func buildClosureWithIntParam(body *ast.BlockStmt, name string) *ast.FuncLit {
 	}
 }
 
+// buildRuntimeCallExpr builds the expression "runtime.FuncName(args...)" as an
+// *ast.CallExpr. Use this when the call is needed as a value. Use
+// buildRuntimeCall when the call stands alone as a statement.
+func buildRuntimeCallExpr(funcName string, args ...ast.Expr) *ast.CallExpr {
+	return &ast.CallExpr{
+		Fun: &ast.SelectorExpr{
+			X:   &ast.Ident{Name: runtimePkg},
+			Sel: &ast.Ident{Name: funcName},
+		},
+		Args: args,
+	}
+}
+
 // buildRuntimeCall emits "runtime.FuncName(args...)" wrapped in an ExprStmt
 // so it can be used as a drop-in replacement for the block statement of any
 // directive whose body lives inside a parent BlockStmt.
 func buildRuntimeCall(funcName string, args ...ast.Expr) *ast.ExprStmt {
-	return &ast.ExprStmt{
-		X: &ast.CallExpr{
-			Fun: &ast.SelectorExpr{
-				X:   &ast.Ident{Name: runtimePkg},
-				Sel: &ast.Ident{Name: funcName},
-			},
-			Args: args,
-		},
-	}
+	return &ast.ExprStmt{X: buildRuntimeCallExpr(funcName, args...)}
+}
+
+// buildAddrOf builds the address-of expression "&e". The atomic helpers take a
+// pointer to the target variable, so every atomic rewrite wraps its operand
+// with this.
+func buildAddrOf(e ast.Expr) *ast.UnaryExpr {
+	return &ast.UnaryExpr{Op: token.AND, X: e}
 }
 
 // buildStringLit produces a quoted Go string literal node from a raw string.
@@ -393,6 +405,32 @@ func buildFirstprivateShadow(vars []string) *ast.AssignStmt {
 		rhs[i] = &ast.Ident{Name: "_fp_" + v}
 	}
 	return &ast.AssignStmt{Lhs: lhs, Tok: token.DEFINE, Rhs: rhs}
+}
+
+// replaceStmt swaps target for replacement in whatever parent BlockStmt holds
+// it, matched by pointer identity. It generalizes replaceBlockStmt and
+// replaceForStmt to any statement type, which the atomic rewrite needs because
+// its targets are *ast.IncDecStmt and *ast.AssignStmt rather than blocks.
+func replaceStmt(file *ast.File, target, replacement ast.Stmt) bool {
+	var replaced bool
+	ast.Inspect(file, func(n ast.Node) bool {
+		if replaced {
+			return false
+		}
+		block, ok := n.(*ast.BlockStmt)
+		if !ok {
+			return true
+		}
+		for i, stmt := range block.List {
+			if stmt == target {
+				block.List[i] = replacement
+				replaced = true
+				return false
+			}
+		}
+		return true
+	})
+	return replaced
 }
 
 // removeDirectiveComment strips the //gompher comment group anchored at

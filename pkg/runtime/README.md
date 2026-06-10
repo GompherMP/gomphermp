@@ -104,7 +104,7 @@ The current `Barrier()` implementation uses a `sync.WaitGroup` sized for the tea
 | `//gompher single` | `Single(func() { ... })` (transformer wraps with `sync.Once` + barrier) |
 | `//gompher master` | `Master(threadID, func() { ... })` |
 | `//gompher barrier` | `Barrier()` |
-| `//gompher atomic` | inline `sync/atomic` call (no runtime function) |
+| `//gompher atomic` | `runtime.AtomicAddInt` / `AtomicStoreInt` / `AtomicLoadInt` (lock-free helpers over `int`, see `atomic.go`) |
 
 ---
 
