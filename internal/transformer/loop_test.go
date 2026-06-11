@@ -47,8 +47,8 @@ func main() {
 `
 	got := runTransform(t, src)
 
-	if !strings.Contains(got, `runtime.For(func(i int) {`) {
-		t.Errorf("expected runtime.For(func(i int) {...}, N), got:\n%s", got)
+	if !strings.Contains(got, `runtime.For(threadID, func(i int) {`) {
+		t.Errorf("expected runtime.For(threadID, func(i int) {...}, N), got:\n%s", got)
 	}
 	if !strings.Contains(got, "data[i] = i * i") {
 		t.Errorf("expected loop body preserved, got:\n%s", got)
@@ -84,8 +84,9 @@ func main() {
 }
 
 // TestTransform_ParallelFor_ScheduleDynamic verifies that a schedule(dynamic,
-// c) clause redirects the combined construct to runtime.ForDynamic with the
-// requested chunk size, rather than the static ParallelFor entry point.
+// c) clause redirects the combined construct to runtime.ParallelForDynamic
+// with the requested chunk size, rather than the static ParallelFor entry
+// point.
 func TestTransform_ParallelFor_ScheduleDynamic(t *testing.T) {
 	src := `package main
 
@@ -103,14 +104,11 @@ func heavy(i int) int { return i }
 `
 	got := runTransform(t, src)
 
-	if !strings.Contains(got, `runtime.ForDynamic(func(i int) {`) {
-		t.Errorf("expected runtime.ForDynamic for schedule(dynamic), got:\n%s", got)
+	if !strings.Contains(got, `runtime.ParallelForDynamic(func(i int) {`) {
+		t.Errorf("expected runtime.ParallelForDynamic for parallel for schedule(dynamic), got:\n%s", got)
 	}
 	if !strings.Contains(got, "}, N, 4)") {
 		t.Errorf("expected bound N and chunk 4 as trailing args, got:\n%s", got)
-	}
-	if strings.Contains(got, "ParallelFor") {
-		t.Errorf("expected ParallelFor NOT emitted when schedule is dynamic, got:\n%s", got)
 	}
 }
 
@@ -138,7 +136,7 @@ func work(i int) {}
 }
 
 // TestTransform_For_ScheduleStaticUsesStaticFunc verifies that an explicit
-// schedule(static) does NOT divert to ForDynamic — static scheduling keeps
+// schedule(static) does NOT divert to ForDynamic - static scheduling keeps
 // the runtime.For entry point.
 func TestTransform_For_ScheduleStaticUsesStaticFunc(t *testing.T) {
 	src := `package main
@@ -155,7 +153,7 @@ func work(i int) {}
 `
 	got := runTransform(t, src)
 
-	if !strings.Contains(got, `runtime.For(func(i int) {`) {
+	if !strings.Contains(got, `runtime.For(threadID, func(i int) {`) {
 		t.Errorf("expected runtime.For for schedule(static), got:\n%s", got)
 	}
 	if strings.Contains(got, "ForDynamic") {
@@ -181,7 +179,7 @@ func consume(x int) {}
 `
 	got := runTransform(t, src)
 
-	if !strings.Contains(got, `runtime.For(func(idx int) {`) {
+	if !strings.Contains(got, `runtime.For(threadID, func(idx int) {`) {
 		t.Errorf("expected closure param named idx, got:\n%s", got)
 	}
 	if !strings.Contains(got, "consume(idx)") {

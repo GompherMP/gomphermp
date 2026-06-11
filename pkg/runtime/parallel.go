@@ -8,8 +8,19 @@ import (
 // teamContext holds the synchronization state shared by every goroutine that
 // participates in a single parallel region.
 type teamContext struct {
-	barrier *sync.WaitGroup
+	barrier *cyclicBarrier
 	size    int
+
+	// singleFlag is the election token for Single: the goroutine that wins the
+	// CAS from 0 to 1 runs the single body; the others skip it. It is reset to 0
+	// after every single so the same region can contain several.
+	singleFlag int64
+
+	// workCounter is the shared cursor that worksharing constructs with dynamic
+	// distribution (Sections, dynamic For) use to hand out the next unit of
+	// work to whichever team goroutine asks. It is reset to 0 at the closing
+	// barrier of each construct.
+	workCounter int64
 }
 
 var (
@@ -49,16 +60,14 @@ func getCurrentTeam() *teamContext {
 	return teamMap[gid]
 }
 
-// newTeam creates a team context sized for the given number of participants
-// and pre-Adds that count to its barrier WaitGroup so that Barrier() calls
-// from inside the team synchronize correctly without further setup.
+// newTeam creates a team context sized for the given number of participants,
+// with a cyclic barrier so that Barrier() calls from inside the team
+// synchronize correctly and can be issued repeatedly within one region.
 func newTeam(size int) *teamContext {
-	t := &teamContext{
-		barrier: &sync.WaitGroup{},
+	return &teamContext{
+		barrier: newCyclicBarrier(size),
 		size:    size,
 	}
-	t.barrier.Add(size)
-	return t
 }
 
 // Parallel instantiates a team of PoolSize() goroutines, each receiving its
@@ -96,163 +105,139 @@ func Parallel(body func(int)) {
 	wg.Wait()
 }
 
-// For distributes the iteration space across the pool by
-// splitting it into PoolSize() contiguous chunks of approximately equal size.
-// Each chunk is dispatched as a separate job to a pool worker.
-func For(body func(int), iterations int) {
-	if iterations <= 0 {
+// For is a worksharing construct: it is called from inside a parallel region
+// by every goroutine of the team, and each caller identified by threadID
+// executes the contiguous static chunk of [0, iterations) assigned to it. The
+// iteration space is split into team-size blocks of near-equal length, with
+// the remainder spread one-per-goroutine across the lowest thread IDs.
+// Outside a parallel region (no team) For degrades to running the whole loop
+// sequentially in the calling goroutine, with no barrier.
+func For(threadID int, body func(int), iterations int) {
+	team := getCurrentTeam()
+	if team == nil {
+		for i := 0; i < iterations; i++ {
+			body(i)
+		}
 		return
 	}
 
-	p := getPool()
-	team := newTeam(p.size)
-
-	chunkSize := iterations / p.size
-	remainder := iterations % p.size
-
-	var wg sync.WaitGroup
-	wg.Add(p.size)
-
-	for tid := 0; tid < p.size; tid++ {
-		start := tid * chunkSize
-		end := start + chunkSize
-		if tid == p.size-1 {
-			end += remainder
+	size := team.size
+	if iterations > 0 {
+		chunk := iterations / size
+		rem := iterations % size
+		start := threadID*chunk + min(threadID, rem)
+		end := start + chunk
+		if threadID < rem {
+			end++
 		}
-
-		chunkStart, chunkEnd := start, end
-		p.submit(job{
-			body: func(int) {
-				for i := chunkStart; i < chunkEnd; i++ {
-					body(i)
-				}
-			},
-			threadID: tid,
-			team:     team,
-			done:     &wg,
-		})
+		for i := start; i < end; i++ {
+			body(i)
+		}
 	}
-	wg.Wait()
+	Barrier()
 }
 
-// ParallelFor is the combined construct that creates a parallel team and
-// statically distributes loop iterations in a single call. Semantically
-// equivalent to wrapping a static For inside a Parallel region.
+// ParallelFor is the combined construct: it creates a team and distributes the
+// loop across it in a single call. Following the specification, it is exactly
+// syntactic sugar for a static For inside a Parallel region.
 func ParallelFor(body func(int), iterations int) {
 	if iterations <= 0 {
 		return
 	}
-
-	p := getPool()
-	team := newTeam(p.size)
-
-	chunkSize := iterations / p.size
-	remainder := iterations % p.size
-
-	var wg sync.WaitGroup
-	wg.Add(p.size)
-
-	for tid := 0; tid < p.size; tid++ {
-		start := tid * chunkSize
-		end := start + chunkSize
-		if tid == p.size-1 {
-			end += remainder
-		}
-
-		chunkStart, chunkEnd := start, end
-		p.submit(job{
-			body: func(int) {
-				for i := chunkStart; i < chunkEnd; i++ {
-					body(i)
-				}
-			},
-			threadID: tid,
-			team:     team,
-			done:     &wg,
-		})
-	}
-	wg.Wait()
+	Parallel(func(threadID int) {
+		For(threadID, body, iterations)
+	})
 }
 
-// ForDynamic distributes iterations across the pool using a shared atomic
-// counter. Each worker repeatedly claims a chunk of "chunkSize" consecutive
-// iterations from the counter, executes it, and returns for more until the
-// iteration space is exhausted.
+// ForDynamic is the dynamic-schedule worksharing construct: it is called from
+// inside a parallel region by every goroutine of the team, which repeatedly
+// claim chunks of chunkSize consecutive iterations from the team's shared
+// cursor until the space is exhausted, then synchronize at the implicit
+// barrier. Because chunks are handed out on demand, goroutines that finish
+// quick work pick up more, balancing uneven iteration costs.
 func ForDynamic(body func(int), iterations, chunkSize int) {
-	if iterations <= 0 {
+	team := getCurrentTeam()
+	if team == nil {
+		for i := 0; i < iterations; i++ {
+			body(i)
+		}
 		return
 	}
+
 	if chunkSize <= 0 {
 		chunkSize = 1
 	}
-
-	p := getPool()
-	team := newTeam(p.size)
-
-	var counter int64
-	var wg sync.WaitGroup
-	wg.Add(p.size)
-
-	for tid := 0; tid < p.size; tid++ {
-		p.submit(job{
-			body: func(int) {
-				for {
-					start := atomic.AddInt64(&counter, int64(chunkSize)) - int64(chunkSize)
-					if start >= int64(iterations) {
-						return
-					}
-					end := start + int64(chunkSize)
-					if end > int64(iterations) {
-						end = int64(iterations)
-					}
-					for i := start; i < end; i++ {
-						body(int(i))
-					}
-				}
-			},
-			threadID: tid,
-			team:     team,
-			done:     &wg,
-		})
+	if iterations > 0 {
+		for {
+			start := atomic.AddInt64(&team.workCounter, int64(chunkSize)) - int64(chunkSize)
+			if start >= int64(iterations) {
+				break
+			}
+			end := start + int64(chunkSize)
+			if end > int64(iterations) {
+				end = int64(iterations)
+			}
+			for i := start; i < end; i++ {
+				body(int(i))
+			}
+		}
 	}
-	wg.Wait()
+	team.barrier.waitThen(func() {
+		atomic.StoreInt64(&team.workCounter, 0)
+	})
 }
 
-// Sections distributes an arbitrary list of independent code blocks across
-// the pool. Each block runs exactly once on whichever worker picks it up
-// first, using the same atomic-counter dispatch pattern as ForDynamic.
+// ParallelForDynamic is the combined construct: it creates a team and runs a
+// dynamic-schedule loop across it in a single call. It is exactly a ForDynamic
+// worksharing construct inside a Parallel region.
+func ParallelForDynamic(body func(int), iterations, chunkSize int) {
+	if iterations <= 0 {
+		return
+	}
+	Parallel(func(int) {
+		ForDynamic(body, iterations, chunkSize)
+	})
+}
+
+// Sections is a worksharing construct: it is called from inside a parallel
+// region by every goroutine of the team, and the team collectively claims the
+// blocks from the shared cursor (dynamic distribution) so each runs exactly
+// once on whichever goroutine grabs it. A call ends at the implicit barrier
+// that closes the construct.
 func Sections(sections []func()) {
 	if len(sections) == 0 {
 		return
 	}
 
-	p := getPool()
-	workers := p.size
-	if workers > len(sections) {
-		workers = len(sections)
+	team := getCurrentTeam()
+	if team == nil {
+		for _, s := range sections {
+			s()
+		}
+		return
 	}
 
-	team := newTeam(workers)
-
-	var counter int64
-	var wg sync.WaitGroup
-	wg.Add(workers)
-
-	for w := 0; w < workers; w++ {
-		p.submit(job{
-			body: func(int) {
-				for {
-					idx := atomic.AddInt64(&counter, 1) - 1
-					if idx >= int64(len(sections)) {
-						return
-					}
-					sections[idx]()
-				}
-			},
-			threadID: w,
-			team:     team,
-			done:     &wg,
-		})
+	total := int64(len(sections))
+	for {
+		idx := atomic.AddInt64(&team.workCounter, 1) - 1
+		if idx >= total {
+			break
+		}
+		sections[idx]()
 	}
-	wg.Wait()
+	team.barrier.waitThen(func() {
+		atomic.StoreInt64(&team.workCounter, 0)
+	})
+}
+
+// ParallelSections is the combined construct: it creates a team and distributes
+// the section blocks across it in a single call. Following the specification,
+// it is exactly a Sections worksharing construct inside a Parallel region.
+func ParallelSections(sections []func()) {
+	if len(sections) == 0 {
+		return
+	}
+	Parallel(func(int) {
+		Sections(sections)
+	})
 }

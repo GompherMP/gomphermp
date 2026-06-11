@@ -114,7 +114,14 @@ func runBuild(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	// --- Phase 3: Transform ---
+	// --- Phase 3: Validate contextual rules ---
+
+	if err := transformer.Validate(parsed); err != nil {
+		fmt.Fprintf(stderr, "[Error] Validation failed in %s: %v\n", inputPath, err)
+		return 1
+	}
+
+	// --- Phase 4: Transform ---
 
 	transformed, err := transformer.Transform(parsed)
 	if err != nil {

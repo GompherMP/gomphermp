@@ -8,16 +8,21 @@ import (
 	"github.com/gomphermp/gomphermp/internal/parser"
 )
 
-// transformFor rewrites a //gompher for directive into a work-sharing runtime
-// call over a canonical loop (for i := 0; i < N; i++). 
+// transformFor rewrites a //gompher for directive into a worksharing call over
+// the current team: runtime.For(threadID, func(i int){...}, N). It is meant to
+// appear inside a //gompher parallel region, where threadID names the enclosing
+// closure's parameter; the threadID argument is what lets each team goroutine
+// claim its own static chunk.
 func transformFor(result *parser.ParseResult, d parser.ForDirective) error {
-	return transformLoopDirective(result, d.Node, d.Pos, d.Line, d.Clauses, "For")
+	return transformLoopDirective(result, d.Node, d.Pos, d.Line, d.Clauses, "For", true)
 }
 
 // transformParallelFor rewrites a //gompher parallel for directive, the
 // combined construct that creates a team and distributes the loop in one call.
+// runtime.ParallelFor provisions the team and wires the per-goroutine threadID
+// internally, so the emitted call takes no threadID argument.
 func transformParallelFor(result *parser.ParseResult, d parser.ParallelForDirective) error {
-	return transformLoopDirective(result, d.Node, d.Pos, d.Line, d.Clauses, "ParallelFor")
+	return transformLoopDirective(result, d.Node, d.Pos, d.Line, d.Clauses, "ParallelFor", false)
 }
 
 // transformLoopDirective implements the shared rewrite for the loop-based
@@ -35,6 +40,10 @@ func transformLoopDirective(
 	// staticFunc names the runtime function used when scheduling is static or
 	// absent ("For" or "ParallelFor"). A schedule(dynamic, chunk) clause overrides
 	// this with runtime.ForDynamic regardless of staticFunc.
+	prependThreadID bool,
+	// prependThreadID controls whether the enclosing parallel region's threadID is
+	// passed as the first argument. The worksharing For needs it (each goroutine
+	// claims its chunk by threadID), whie the self-contained ParallelFor does not.
 ) error {
 	forStmt, ok := node.(*ast.ForStmt)
 	if !ok {
@@ -60,7 +69,12 @@ func transformLoopDirective(
 			chunk = "1"
 		}
 		chunkLit := &ast.BasicLit{Kind: token.INT, Value: chunk}
-		call = buildRuntimeCall("ForDynamic", closure, bound, chunkLit)
+		// "For" -> "ForDynamic" (worksharing), "ParallelFor" ->
+		// "ParallelForDynamic" (combined). The dynamic schedule shares the
+		// team's cursor, so no threadID argument is needed in either case.
+		call = buildRuntimeCall(staticFunc+"Dynamic", closure, bound, chunkLit)
+	} else if prependThreadID {
+		call = buildRuntimeCall(staticFunc, &ast.Ident{Name: threadIDParamName}, closure, bound)
 	} else {
 		call = buildRuntimeCall(staticFunc, closure, bound)
 	}

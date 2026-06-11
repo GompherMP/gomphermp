@@ -69,7 +69,7 @@ func TestTaskWithDepend_ConsecutiveWriters(t *testing.T) {
 
 		TaskWithDepend(func() {
 			atomic.StoreInt64(&x, atomic.LoadInt64(&x)+1)
-		}, nil, []uintptr{xAddr}, nil) // second out:x — must wait for first
+		}, nil, []uintptr{xAddr}, nil) // second out:x - must wait for first
 	})
 
 	if x != 2 {
@@ -170,13 +170,13 @@ func TestTaskWithDepend_ReadersDoNotBlockEachOther(t *testing.T) {
 				atomic.StoreInt64(&x, 1)
 			}, nil, []uintptr{xAddr}, nil) // out:x
 
-			// r1 signals it started, then waits for r2 — would deadlock if serialized.
+			// r1 signals it started, then waits for r2 - would deadlock if serialized.
 			TaskWithDepend(func() {
 				close(r1Active)
 				<-r2Active
 			}, []uintptr{xAddr}, nil, nil) // in:x
 
-			// r2 signals it started, then waits for r1 — would deadlock if serialized.
+			// r2 signals it started, then waits for r1 - would deadlock if serialized.
 			TaskWithDepend(func() {
 				close(r2Active)
 				<-r1Active
@@ -206,19 +206,19 @@ func TestTaskWithDepend_InoutAfterMultipleReaders(t *testing.T) {
 		TaskWithDepend(func() {
 			time.Sleep(10 * time.Millisecond)
 			atomic.StoreInt64(&r1Done, 1)
-		}, []uintptr{xAddr}, nil, nil) // in:x — reader 1
+		}, []uintptr{xAddr}, nil, nil) // in:x - reader 1
 
 		TaskWithDepend(func() {
 			time.Sleep(20 * time.Millisecond)
 			atomic.StoreInt64(&r2Done, 1)
-		}, []uintptr{xAddr}, nil, nil) // in:x — reader 2
+		}, []uintptr{xAddr}, nil, nil) // in:x - reader 2
 
 		TaskWithDepend(func() {
 			if atomic.LoadInt64(&r1Done) == 1 && atomic.LoadInt64(&r2Done) == 1 {
 				atomic.StoreInt64(&inoutSawBoth, 1)
 			}
 			atomic.AddInt64(&x, 1)
-		}, nil, nil, []uintptr{xAddr}) // inout:x — must wait for both readers
+		}, nil, nil, []uintptr{xAddr}) // inout:x - must wait for both readers
 	})
 
 	if atomic.LoadInt64(&inoutSawBoth) != 1 {
@@ -357,11 +357,11 @@ func TestTaskWithDepend_InAfterInout(t *testing.T) {
 		TaskWithDepend(func() {
 			time.Sleep(20 * time.Millisecond)
 			atomic.StoreInt64(&x, 42)
-		}, nil, nil, []uintptr{xAddr}) // inout:x — acts as writer
+		}, nil, nil, []uintptr{xAddr}) // inout:x - acts as writer
 
 		TaskWithDepend(func() {
 			atomic.StoreInt64(&result, atomic.LoadInt64(&x))
-		}, []uintptr{xAddr}, nil, nil) // in:x — must see x=42
+		}, []uintptr{xAddr}, nil, nil) // in:x - must see x=42
 	})
 
 	if result != 42 {

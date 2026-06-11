@@ -4,32 +4,38 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
-// TestFor_BasicExecution verifies that For executes all iterations.
+// TestFor_BasicExecution verifies that the team collectively executes every
+// iteration exactly once.
 func TestFor_BasicExecution(t *testing.T) {
 	const iterations = 100
 	var counter int64
 
-	For(func(i int) {
-		atomic.AddInt64(&counter, 1)
-	}, iterations)
+	Parallel(func(threadID int) {
+		For(threadID, func(i int) {
+			atomic.AddInt64(&counter, 1)
+		}, iterations)
+	})
 
 	if counter != iterations {
 		t.Errorf("expected %d iterations, got %d", iterations, counter)
 	}
 }
 
-// TestFor_CorrectIterationValues verifies each iteration receives the correct index.
+// TestFor_CorrectIterationValues verifies each index is processed exactly once
+// across the team, with the right value.
 func TestFor_CorrectIterationValues(t *testing.T) {
 	const iterations = 100
 	results := make([]int, iterations)
 
-	For(func(i int) {
-		results[i] = i * i
-	}, iterations)
+	Parallel(func(threadID int) {
+		For(threadID, func(i int) {
+			results[i] = i * i
+		}, iterations)
+	})
 
-	// Verify each index was processed exactly once
 	for i := 0; i < iterations; i++ {
 		expected := i * i
 		if results[i] != expected {
@@ -38,65 +44,83 @@ func TestFor_CorrectIterationValues(t *testing.T) {
 	}
 }
 
-// TestFor_ZeroIterations verifies For handles zero iterations
+// TestFor_ZeroIterations verifies an empty iteration space runs no body calls
+// but still lets every goroutine reach the loop's implicit barrier.
 func TestFor_ZeroIterations(t *testing.T) {
 	var counter int64
 
-	For(func(i int) {
-		atomic.AddInt64(&counter, 1)
-	}, 0)
+	Parallel(func(threadID int) {
+		For(threadID, func(i int) {
+			atomic.AddInt64(&counter, 1)
+		}, 0)
+	})
 
 	if counter != 0 {
 		t.Errorf("expected 0 iterations, got %d", counter)
 	}
 }
 
-// TestFor_NegativeIterations verifies For handles negative iterations
+// TestFor_NegativeIterations verifies a negative iteration count is treated as
+// empty.
 func TestFor_NegativeIterations(t *testing.T) {
 	var counter int64
 
-	For(func(i int) {
-		atomic.AddInt64(&counter, 1)
-	}, -10)
+	Parallel(func(threadID int) {
+		For(threadID, func(i int) {
+			atomic.AddInt64(&counter, 1)
+		}, -10)
+	})
 
 	if counter != 0 {
 		t.Errorf("expected 0 iterations for negative input, got %d", counter)
 	}
 }
 
-// TestFor_WithClampedPoolSize verifies that For continues to distribute and
-// execute every iteration after the pool is set to invalid sizes (zero or
-// negative), which SetPoolSize internally clamps to the minimum of one.
+// TestFor_WithClampedPoolSize verifies that For still executes every iteration
+// after the pool is clamped to a single worker (team of one).
 func TestFor_WithClampedPoolSize(t *testing.T) {
 	originalSize := PoolSize()
 	defer SetPoolSize(originalSize)
 
 	const iterations = 10
 
-	// Pool size 0 -> clamped to 1 by SetPoolSize.
-	SetPoolSize(0)
-	var counter int64
-	For(func(i int) {
-		atomic.AddInt64(&counter, 1)
-	}, iterations)
-	if counter != iterations {
-		t.Errorf("expected %d iterations after SetPoolSize(0), got %d", iterations, counter)
+	for _, requested := range []int{0, -5} {
+		SetPoolSize(requested) // clamped to 1
+		var counter int64
+		Parallel(func(threadID int) {
+			For(threadID, func(i int) {
+				atomic.AddInt64(&counter, 1)
+			}, iterations)
+		})
+		if counter != iterations {
+			t.Errorf("SetPoolSize(%d): expected %d iterations, got %d", requested, iterations, counter)
+		}
 	}
+}
 
-	// Pool size -5 -> clamped to 1 by SetPoolSize.
-	SetPoolSize(-5)
-	counter = 0
-	For(func(i int) {
-		atomic.AddInt64(&counter, 1)
+// TestFor_StandaloneRunsSequentially verifies the degraded path: called
+// outside any parallel region (no team), For runs the entire loop in the
+// calling goroutine, so it remains usable even when misused without an
+// enclosing Parallel.
+func TestFor_StandaloneRunsSequentially(t *testing.T) {
+	const iterations = 50
+	results := make([]int, iterations)
+
+	// No enclosing Parallel: getCurrentTeam() is nil.
+	For(0, func(i int) {
+		results[i] = i + 1
 	}, iterations)
-	if counter != iterations {
-		t.Errorf("expected %d iterations after SetPoolSize(-5), got %d", iterations, counter)
+
+	for i := 0; i < iterations; i++ {
+		if results[i] != i+1 {
+			t.Errorf("results[%d] = %d, expected %d", i, results[i], i+1)
+		}
 	}
 }
 
 // TestFor_FewerIterationsThanThreads verifies correctness when there are fewer
-// iterations than configured threads. All iterations must still execute exactly
-// once, even though some goroutines end up receiving no work.
+// iterations than team members: every iteration runs exactly once even though
+// some goroutines get an empty chunk.
 func TestFor_FewerIterationsThanThreads(t *testing.T) {
 	originalSize := PoolSize()
 	defer SetPoolSize(originalSize)
@@ -106,9 +130,11 @@ func TestFor_FewerIterationsThanThreads(t *testing.T) {
 	const iterations = 3
 	counts := make([]int64, iterations)
 
-	For(func(i int) {
-		atomic.AddInt64(&counts[i], 1)
-	}, iterations)
+	Parallel(func(threadID int) {
+		For(threadID, func(i int) {
+			atomic.AddInt64(&counts[i], 1)
+		}, iterations)
+	})
 
 	for i := 0; i < iterations; i++ {
 		if counts[i] != 1 {
@@ -349,11 +375,11 @@ func TestParallelFor_WithClampedPoolSize(t *testing.T) {
 }
 
 // TestForDynamic_AllIterationsExecute verifies every iteration runs exactly once.
-func TestForDynamic_AllIterationsExecute(t *testing.T) {
+func TestParallelForDynamic_AllIterationsExecute(t *testing.T) {
 	const iterations = 100
 	counts := make([]int64, iterations)
 
-	ForDynamic(func(i int) {
+	ParallelForDynamic(func(i int) {
 		atomic.AddInt64(&counts[i], 1)
 	}, iterations, 5)
 
@@ -365,11 +391,11 @@ func TestForDynamic_AllIterationsExecute(t *testing.T) {
 }
 
 // TestForDynamic_CorrectValues verifies each iteration receives its index.
-func TestForDynamic_CorrectValues(t *testing.T) {
+func TestParallelForDynamic_CorrectValues(t *testing.T) {
 	const iterations = 50
 	results := make([]int, iterations)
 
-	ForDynamic(func(i int) {
+	ParallelForDynamic(func(i int) {
 		results[i] = i * 2
 	}, iterations, 10)
 
@@ -382,11 +408,11 @@ func TestForDynamic_CorrectValues(t *testing.T) {
 }
 
 // TestForDynamic_ChunkSizeOne verifies execution with chunkSize=1 (one iteration per claim).
-func TestForDynamic_ChunkSizeOne(t *testing.T) {
+func TestParallelForDynamic_ChunkSizeOne(t *testing.T) {
 	const iterations = 30
 	var counter int64
 
-	ForDynamic(func(i int) {
+	ParallelForDynamic(func(i int) {
 		atomic.AddInt64(&counter, 1)
 	}, iterations, 1)
 
@@ -397,11 +423,11 @@ func TestForDynamic_ChunkSizeOne(t *testing.T) {
 
 // TestForDynamic_ChunkSizeLargerThanIterations verifies a single goroutine
 // takes all iterations when the chunk size exceeds the iteration count.
-func TestForDynamic_ChunkSizeLargerThanIterations(t *testing.T) {
+func TestParallelForDynamic_ChunkSizeLargerThanIterations(t *testing.T) {
 	const iterations = 10
 	var counter int64
 
-	ForDynamic(func(i int) {
+	ParallelForDynamic(func(i int) {
 		atomic.AddInt64(&counter, 1)
 	}, iterations, 1000)
 
@@ -411,10 +437,10 @@ func TestForDynamic_ChunkSizeLargerThanIterations(t *testing.T) {
 }
 
 // TestForDynamic_ZeroIterations verifies the function returns immediately.
-func TestForDynamic_ZeroIterations(t *testing.T) {
+func TestParallelForDynamic_ZeroIterations(t *testing.T) {
 	var counter int64
 
-	ForDynamic(func(i int) {
+	ParallelForDynamic(func(i int) {
 		atomic.AddInt64(&counter, 1)
 	}, 0, 5)
 
@@ -424,10 +450,10 @@ func TestForDynamic_ZeroIterations(t *testing.T) {
 }
 
 // TestForDynamic_NegativeIterations verifies negative input is rejected.
-func TestForDynamic_NegativeIterations(t *testing.T) {
+func TestParallelForDynamic_NegativeIterations(t *testing.T) {
 	var counter int64
 
-	ForDynamic(func(i int) {
+	ParallelForDynamic(func(i int) {
 		atomic.AddInt64(&counter, 1)
 	}, -5, 2)
 
@@ -437,11 +463,11 @@ func TestForDynamic_NegativeIterations(t *testing.T) {
 }
 
 // TestForDynamic_InvalidChunkSize verifies chunkSize <= 0 is corrected to 1.
-func TestForDynamic_InvalidChunkSize(t *testing.T) {
+func TestParallelForDynamic_InvalidChunkSize(t *testing.T) {
 	const iterations = 20
 	var counter int64
 
-	ForDynamic(func(i int) {
+	ParallelForDynamic(func(i int) {
 		atomic.AddInt64(&counter, 1)
 	}, iterations, 0)
 
@@ -450,7 +476,7 @@ func TestForDynamic_InvalidChunkSize(t *testing.T) {
 	}
 
 	counter = 0
-	ForDynamic(func(i int) {
+	ParallelForDynamic(func(i int) {
 		atomic.AddInt64(&counter, 1)
 	}, iterations, -3)
 
@@ -462,7 +488,7 @@ func TestForDynamic_InvalidChunkSize(t *testing.T) {
 // TestForDynamic_WithClampedPoolSize verifies that ForDynamic continues to
 // execute every iteration after the pool size is clamped to one by an
 // invalid SetPoolSize argument.
-func TestForDynamic_WithClampedPoolSize(t *testing.T) {
+func TestParallelForDynamic_WithClampedPoolSize(t *testing.T) {
 	originalSize := PoolSize()
 	defer SetPoolSize(originalSize)
 
@@ -471,7 +497,7 @@ func TestForDynamic_WithClampedPoolSize(t *testing.T) {
 	const iterations = 15
 	var counter int64
 
-	ForDynamic(func(i int) {
+	ParallelForDynamic(func(i int) {
 		atomic.AddInt64(&counter, 1)
 	}, iterations, 4)
 
@@ -480,26 +506,29 @@ func TestForDynamic_WithClampedPoolSize(t *testing.T) {
 	}
 }
 
-// TestForDynamic_DistributesAcrossGoroutines verifies that work is actually
-// dispatched to multiple goroutines, not serialized to one. With pool size >= 2,
-// iterations large enough and chunks small enough, at least two distinct
-// goroutine IDs must record activity.
-func TestForDynamic_DistributesAcrossGoroutines(t *testing.T) {
+// TestParallelForDynamic_DistributesAcrossGoroutines verifies that work is
+// actually dispatched to multiple goroutines, not serialized to one. Each
+// iteration sleeps briefly so a single fast goroutine cannot drain the whole
+// chunk queue before its teammates start claiming - without that, dynamic
+// scheduling is free to (legitimately) run everything on one goroutine, which
+// would make the multi-goroutine assertion racy.
+func TestParallelForDynamic_DistributesAcrossGoroutines(t *testing.T) {
 	originalSize := PoolSize()
 	defer SetPoolSize(originalSize)
 
 	SetPoolSize(4)
 
-	const iterations = 1000
+	const iterations = 40
 	var (
 		seenIDs sync.Map
 		counter int64
 	)
 
-	ForDynamic(func(i int) {
+	ParallelForDynamic(func(i int) {
 		seenIDs.Store(getGoroutineID(), struct{}{})
 		atomic.AddInt64(&counter, 1)
-	}, iterations, 4)
+		time.Sleep(time.Millisecond)
+	}, iterations, 1)
 
 	if counter != iterations {
 		t.Fatalf("expected %d iterations, got %d", iterations, counter)
@@ -518,11 +547,11 @@ func TestForDynamic_DistributesAcrossGoroutines(t *testing.T) {
 // TestForDynamic_StressNoRace runs many iterations with the smallest possible
 // chunk size to stress the shared atomic counter. Every iteration must run
 // exactly once with no losses or duplicates, even under maximum contention.
-func TestForDynamic_StressNoRace(t *testing.T) {
+func TestParallelForDynamic_StressNoRace(t *testing.T) {
 	const iterations = 10000
 	results := make([]int64, iterations)
 
-	ForDynamic(func(i int) {
+	ParallelForDynamic(func(i int) {
 		atomic.AddInt64(&results[i], 1)
 	}, iterations, 1)
 
@@ -533,8 +562,60 @@ func TestForDynamic_StressNoRace(t *testing.T) {
 	}
 }
 
-// TestSections_AllSectionsExecute verifies every section runs exactly once.
-func TestSections_AllSectionsExecute(t *testing.T) {
+// TestForDynamic_WorksharingInParallel verifies the worksharing path: when
+// every goroutine of a parallel team calls ForDynamic, the team collectively
+// runs each iteration exactly once by claiming chunks from the shared cursor,
+// then synchronizes at the construct's implicit barrier.
+func TestForDynamic_WorksharingInParallel(t *testing.T) {
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
+	SetPoolSize(4)
+
+	const iterations = 1000
+	counts := make([]int64, iterations)
+	var afterLoop int64
+
+	Parallel(func(threadID int) {
+		ForDynamic(func(i int) {
+			atomic.AddInt64(&counts[i], 1)
+		}, iterations, 4)
+		atomic.AddInt64(&afterLoop, 1)
+	})
+
+	for i := 0; i < iterations; i++ {
+		if counts[i] != 1 {
+			t.Errorf("iteration %d ran %d times across the team, expected exactly 1", i, counts[i])
+		}
+	}
+	if afterLoop != int64(PoolSize()) {
+		t.Errorf("expected all %d goroutines past the loop barrier, got %d", PoolSize(), afterLoop)
+	}
+}
+
+// TestForDynamic_StandaloneSequential verifies that ForDynamic with no
+// surrounding team runs every iteration once, sequentially.
+func TestForDynamic_StandaloneSequential(t *testing.T) {
+	const iterations = 40
+	results := make([]int, iterations)
+
+	ForDynamic(func(i int) {
+		results[i] = i + 1
+	}, iterations, 5)
+
+	for i := 0; i < iterations; i++ {
+		if results[i] != i+1 {
+			t.Errorf("results[%d] = %d, expected %d", i, results[i], i+1)
+		}
+	}
+}
+
+// Sections is worksharing: standalone it runs sequentially, while the combined
+// ParallelSections provisions a team. The parallel-distribution tests therefore
+// exercise ParallelSections; a dedicated test covers the worksharing path of
+// Sections called inside an explicit Parallel region.
+
+// TestParallelSections_AllSectionsExecute verifies every section runs exactly once.
+func TestParallelSections_AllSectionsExecute(t *testing.T) {
 	const total = 6
 	counts := make([]int64, total)
 
@@ -546,7 +627,7 @@ func TestSections_AllSectionsExecute(t *testing.T) {
 		}
 	}
 
-	Sections(sections)
+	ParallelSections(sections)
 
 	for i := 0; i < total; i++ {
 		if counts[i] != 1 {
@@ -555,15 +636,16 @@ func TestSections_AllSectionsExecute(t *testing.T) {
 	}
 }
 
-// TestSections_FewerSectionsThanThreads verifies excess goroutines are not spawned.
-func TestSections_FewerSectionsThanThreads(t *testing.T) {
+// TestParallelSections_FewerSectionsThanThreads verifies correctness when there
+// are fewer sections than team members.
+func TestParallelSections_FewerSectionsThanThreads(t *testing.T) {
 	originalSize := PoolSize()
 	defer SetPoolSize(originalSize)
 
 	SetPoolSize(8)
 	var counter int64
 
-	Sections([]func(){
+	ParallelSections([]func(){
 		func() { atomic.AddInt64(&counter, 1) },
 		func() { atomic.AddInt64(&counter, 1) },
 	})
@@ -573,9 +655,9 @@ func TestSections_FewerSectionsThanThreads(t *testing.T) {
 	}
 }
 
-// TestSections_MoreSectionsThanThreads verifies all sections execute when there
-// are more sections than goroutines.
-func TestSections_MoreSectionsThanThreads(t *testing.T) {
+// TestParallelSections_MoreSectionsThanThreads verifies all sections execute
+// when there are more sections than team members.
+func TestParallelSections_MoreSectionsThanThreads(t *testing.T) {
 	originalSize := PoolSize()
 	defer SetPoolSize(originalSize)
 
@@ -588,30 +670,80 @@ func TestSections_MoreSectionsThanThreads(t *testing.T) {
 		sections[i] = func() { atomic.AddInt64(&counter, 1) }
 	}
 
-	Sections(sections)
+	ParallelSections(sections)
 
 	if counter != int64(total) {
 		t.Errorf("expected %d executions, got %d", total, counter)
 	}
 }
 
-// TestSections_EmptyList verifies an empty input returns immediately.
+// TestSections_WorksharingInParallel verifies the worksharing path: when every
+// goroutine of a parallel team calls Sections, each block still runs exactly
+// once across the team (not once per goroutine), and the team synchronizes at
+// the construct's implicit barrier.
+func TestSections_WorksharingInParallel(t *testing.T) {
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
+	SetPoolSize(4)
+
+	const total = 10
+	counts := make([]int64, total)
+	var afterSections int64
+
+	sections := make([]func(), total)
+	for i := 0; i < total; i++ {
+		i := i
+		sections[i] = func() { atomic.AddInt64(&counts[i], 1) }
+	}
+
+	Parallel(func(threadID int) {
+		Sections(sections)
+		atomic.AddInt64(&afterSections, 1)
+	})
+
+	for i := 0; i < total; i++ {
+		if counts[i] != 1 {
+			t.Errorf("section %d ran %d times across the team, expected exactly 1", i, counts[i])
+		}
+	}
+	if afterSections != int64(PoolSize()) {
+		t.Errorf("expected all %d goroutines past the sections barrier, got %d", PoolSize(), afterSections)
+	}
+}
+
+// TestSections_StandaloneSequential verifies that Sections called with no
+// surrounding team runs every block once, sequentially.
+func TestSections_StandaloneSequential(t *testing.T) {
+	var counter int64
+	Sections([]func(){
+		func() { atomic.AddInt64(&counter, 1) },
+		func() { atomic.AddInt64(&counter, 1) },
+		func() { atomic.AddInt64(&counter, 1) },
+	})
+	if counter != 3 {
+		t.Errorf("expected 3 sequential executions, got %d", counter)
+	}
+}
+
+// TestSections_EmptyList verifies an empty input returns immediately for both
+// the worksharing and combined entry points.
 func TestSections_EmptyList(t *testing.T) {
 	Sections([]func(){})
 	Sections(nil)
+	ParallelSections([]func(){})
+	ParallelSections(nil)
 }
 
-// TestSections_WithClampedPoolSize verifies that Sections continues to execute
-// every block after the pool size is clamped to one by an invalid SetPoolSize
-// argument.
-func TestSections_WithClampedPoolSize(t *testing.T) {
+// TestParallelSections_WithClampedPoolSize verifies that every block still runs
+// after the pool size is clamped to one.
+func TestParallelSections_WithClampedPoolSize(t *testing.T) {
 	originalSize := PoolSize()
 	defer SetPoolSize(originalSize)
 
 	SetPoolSize(0)
 	var counter int64
 
-	Sections([]func(){
+	ParallelSections([]func(){
 		func() { atomic.AddInt64(&counter, 1) },
 		func() { atomic.AddInt64(&counter, 1) },
 		func() { atomic.AddInt64(&counter, 1) },
@@ -622,14 +754,14 @@ func TestSections_WithClampedPoolSize(t *testing.T) {
 	}
 }
 
-// TestSections_DifferentBodies verifies each section runs its own function.
-func TestSections_DifferentBodies(t *testing.T) {
+// TestParallelSections_DifferentBodies verifies each section runs its own function.
+func TestParallelSections_DifferentBodies(t *testing.T) {
 	var (
 		ranA, ranB, ranC bool
 		mu               sync.Mutex
 	)
 
-	Sections([]func(){
+	ParallelSections([]func(){
 		func() { mu.Lock(); ranA = true; mu.Unlock() },
 		func() { mu.Lock(); ranB = true; mu.Unlock() },
 		func() { mu.Lock(); ranC = true; mu.Unlock() },

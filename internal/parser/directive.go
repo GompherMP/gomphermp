@@ -17,20 +17,21 @@ type Directive interface {
 type DirectiveKind string
 
 const (
-	DirParallel    DirectiveKind = "parallel"
-	DirFor         DirectiveKind = "for"
-	DirParallelFor DirectiveKind = "parallel for"
-	DirSections    DirectiveKind = "sections"
-	DirSection     DirectiveKind = "section"
-	DirSingle      DirectiveKind = "single"
-	DirMaster      DirectiveKind = "master"
-	DirCritical    DirectiveKind = "critical"
-	DirBarrier     DirectiveKind = "barrier"
-	DirAtomic      DirectiveKind = "atomic"
-	DirTask        DirectiveKind = "task"
-	DirTaskwait    DirectiveKind = "taskwait"
-	DirTaskgroup   DirectiveKind = "taskgroup"
-	DirTaskloop    DirectiveKind = "taskloop"
+	DirParallel         DirectiveKind = "parallel"
+	DirFor              DirectiveKind = "for"
+	DirParallelFor      DirectiveKind = "parallel for"
+	DirSections         DirectiveKind = "sections"
+	DirParallelSections DirectiveKind = "parallel sections"
+	DirSection          DirectiveKind = "section"
+	DirSingle           DirectiveKind = "single"
+	DirMaster           DirectiveKind = "master"
+	DirCritical         DirectiveKind = "critical"
+	DirBarrier          DirectiveKind = "barrier"
+	DirAtomic           DirectiveKind = "atomic"
+	DirTask             DirectiveKind = "task"
+	DirTaskwait         DirectiveKind = "taskwait"
+	DirTaskgroup        DirectiveKind = "taskgroup"
+	DirTaskloop         DirectiveKind = "taskloop"
 )
 
 // pos holds source position fields shared by all directives.
@@ -84,6 +85,18 @@ type SectionsDirective struct {
 
 func (d SectionsDirective) directiveKind() DirectiveKind { return DirSections }
 func (d SectionsDirective) line() int                    { return d.Line }
+
+// ParallelSectionsDirective represents //gompher parallel sections.
+// A combined construct that creates a parallel region and immediately
+// distributes the enclosed section blocks among the team.
+type ParallelSectionsDirective struct {
+	Clauses []Clause // private, firstprivate, lastprivate, reduction
+	Node    ast.Node // *ast.BlockStmt
+	pos
+}
+
+func (d ParallelSectionsDirective) directiveKind() DirectiveKind { return DirParallelSections }
+func (d ParallelSectionsDirective) line() int                    { return d.Line }
 
 // SectionDirective represents //gompher section.
 // It marks a single independent block of work within a sections directive.

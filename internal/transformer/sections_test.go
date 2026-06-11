@@ -56,6 +56,44 @@ func charlie() {}
 	}
 }
 
+// TestTransform_ParallelSections_BasicRewrite verifies the combined construct:
+// //gompher parallel sections becomes runtime.ParallelSections([]func(){...}),
+// carrying one closure per nested section in source order.
+func TestTransform_ParallelSections_BasicRewrite(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel sections
+	{
+		//gompher section
+		{
+			alpha()
+		}
+		//gompher section
+		{
+			bravo()
+		}
+	}
+}
+
+func alpha() {}
+func bravo() {}
+`
+	got := runTransform(t, src)
+
+	if !strings.Contains(got, `runtime.ParallelSections([]func(){`) {
+		t.Errorf("expected runtime.ParallelSections([]func(){...}), got:\n%s", got)
+	}
+	for _, want := range []string{"alpha()", "bravo()"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("expected section body %q preserved, got:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "//gompher") {
+		t.Errorf("expected all //gompher comments removed, got:\n%s", got)
+	}
+}
+
 // TestTransform_Sections_AddsRuntimeImport verifies the runtime import is
 // injected for a sections construct in a file with no prior runtime import.
 func TestTransform_Sections_AddsRuntimeImport(t *testing.T) {
@@ -227,6 +265,29 @@ func TestTransform_PropagatesSectionsError(t *testing.T) {
 
 	parsed.Nodes = append(parsed.Nodes, parser.AnnotatedNode{
 		Directive: parser.SectionsDirective{
+			Node: &ast.ExprStmt{},
+		},
+	})
+
+	got, err := Transform(parsed)
+	if err == nil {
+		t.Fatal("expected Transform to propagate the underlying error")
+	}
+	if got != nil {
+		t.Errorf("expected nil ParseResult on error, got %v", got)
+	}
+}
+
+// TestTransform_PropagatesParallelSectionsError verifies the same
+// error-propagation contract for the combined parallel sections construct.
+func TestTransform_PropagatesParallelSectionsError(t *testing.T) {
+	parsed, err := parser.Parse("package main\n")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	parsed.Nodes = append(parsed.Nodes, parser.AnnotatedNode{
+		Directive: parser.ParallelSectionsDirective{
 			Node: &ast.ExprStmt{},
 		},
 	})

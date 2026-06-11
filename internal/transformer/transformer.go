@@ -43,6 +43,11 @@ func Transform(result *parser.ParseResult) (*parser.ParseResult, error) {
 				return nil, err
 			}
 			emittedRuntime = true
+		case parser.ParallelSectionsDirective:
+			if err := transformParallelSections(result, d); err != nil {
+				return nil, err
+			}
+			emittedRuntime = true
 		case parser.BarrierDirective:
 			if err := transformBarrier(result, d); err != nil {
 				return nil, err

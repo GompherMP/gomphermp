@@ -21,7 +21,7 @@ func loadSubtitles() {
 }
 
 func main() {
-	//gompher sections
+	//gompher parallel sections
 	{
 		//gompher section
 		{

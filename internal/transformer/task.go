@@ -13,7 +13,7 @@ import (
 //   - depend only:                  runtime.TaskWithDepend(func() { body }, ins, outs, inouts)
 //   - firstprivate(x):              _fp_x := x; runtime.Task(func() { x := _fp_x; body })
 //   - private(x):                   runtime.Task(func() { var x T; body })
-//   - shared(x):                    silently ignored — Go closures share by reference by default
+//   - shared(x):                    silently ignored - Go closures share by reference by default
 //   - combinations of the above are supported
 func transformTask(result *parser.ParseResult, d parser.TaskDirective) error {
 	var fpVars, pvVars []string
@@ -77,7 +77,7 @@ func transformTask(result *parser.ParseResult, d parser.TaskDirective) error {
 	// Build statements to prepend inside the closure body.
 	var closurePrefix []ast.Stmt
 
-	// private(x): var x T — zero-initialized, shadows outer x.
+	// private(x): var x T - zero-initialized, shadows outer x.
 	for _, v := range pvVars {
 		typeExpr, err := findVarType(result.File, v, d.Pos)
 		if err != nil {
@@ -86,7 +86,7 @@ func transformTask(result *parser.ParseResult, d parser.TaskDirective) error {
 		closurePrefix = append(closurePrefix, buildPrivateVarDecl(v, typeExpr))
 	}
 
-	// firstprivate(x): x := _fp_x — shadows outer x with the captured copy.
+	// firstprivate(x): x := _fp_x - shadows outer x with the captured copy.
 	if hasFP {
 		closurePrefix = append(closurePrefix, buildFirstprivateShadow(fpVars))
 	}
@@ -127,7 +127,7 @@ func transformTask(result *parser.ParseResult, d parser.TaskDirective) error {
 }
 
 // transformTaskwait rewrites a //gompher taskwait directive into runtime.Taskwait().
-// Unlike block directives, taskwait has no associated AST node — it is a standalone
+// Unlike block directives, taskwait has no associated AST node - it is a standalone
 // sync point. The call is spliced into the parent block at the directive's position.
 func transformTaskwait(result *parser.ParseResult, d parser.TaskwaitDirective) error {
 	call := buildRuntimeCall("Taskwait")

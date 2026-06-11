@@ -359,7 +359,7 @@ func findVarType(file *ast.File, varName string, beforePos token.Pos) (ast.Expr,
 	})
 
 	if found == nil {
-		return nil, fmt.Errorf("private clause: cannot determine type of %q — use an explicit 'var %s T' declaration", varName, varName)
+		return nil, fmt.Errorf("private clause: cannot determine type of %q - use an explicit 'var %s T' declaration", varName, varName)
 	}
 	return found, nil
 }
@@ -381,7 +381,7 @@ func buildPrivateVarDecl(name string, typeExpr ast.Expr) *ast.DeclStmt {
 	}
 }
 
-// buildFirstprivateCapture builds "_fp_x, _fp_y := x, y" — a DEFINE
+// buildFirstprivateCapture builds "_fp_x, _fp_y := x, y" - a DEFINE
 // assignment that snapshots the current values of vars before the goroutine
 // starts. Injected into the surrounding block immediately before the Task call.
 func buildFirstprivateCapture(vars []string) *ast.AssignStmt {
@@ -394,7 +394,7 @@ func buildFirstprivateCapture(vars []string) *ast.AssignStmt {
 	return &ast.AssignStmt{Lhs: lhs, Tok: token.DEFINE, Rhs: rhs}
 }
 
-// buildFirstprivateShadow builds "x, y := _fp_x, _fp_y" — prepended at the
+// buildFirstprivateShadow builds "x, y := _fp_x, _fp_y" - prepended at the
 // top of the closure body so the original names refer to the captured copies
 // rather than the outer variables captured by reference.
 func buildFirstprivateShadow(vars []string) *ast.AssignStmt {

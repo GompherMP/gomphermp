@@ -9,7 +9,8 @@ import (
 )
 
 // transformSections rewrites a //gompher sections block and its nested
-// //gompher section blocks into a single runtime.Sections call.
+// //gompher section blocks into a single runtime.Sections call (the worksharing
+// form, distributed across the enclosing parallel team).
 //
 //	//gompher sections          runtime.Sections([]func(){
 //	{                               func() { A },
@@ -18,17 +19,24 @@ import (
 //	    //gompher section
 //	    { B }
 //	}
-//
-// Each section's body block becomes one func() closure element of the
-// []func() slice passed to runtime.Sections, which dispatches the closures
-// across the pool. Because the section directives are nested children of the
-// sections directive (not independent constructs), they are consumed here:
-// Transform does not dispatch SectionDirective on its own, so the only place
-// a section is ever rewritten is from its enclosing sections block.
 func transformSections(result *parser.ParseResult, d parser.SectionsDirective) error {
-	outer, ok := d.Node.(*ast.BlockStmt)
+	return transformSectionsConstruct(result, d.Node, d.Pos, d.Line, "Sections")
+}
+
+// transformParallelSections rewrites a //gompher parallel sections block into a
+// runtime.ParallelSections call: the combined construct that provisions a team
+// and distributes the section blocks across it in one step.
+func transformParallelSections(result *parser.ParseResult, d parser.ParallelSectionsDirective) error {
+	return transformSectionsConstruct(result, d.Node, d.Pos, d.Line, "ParallelSections")
+}
+
+// transformSectionsConstruct implements the shared rewrite for sections and
+// parallel sections. Each nested section's body becomes one func() closure
+// element of the []func() slice passed to runtimeFunc.
+func transformSectionsConstruct(result *parser.ParseResult, node ast.Node, dirPos token.Pos, line int, runtimeFunc string) error {
+	outer, ok := node.(*ast.BlockStmt)
 	if !ok {
-		return fmt.Errorf("Sections at line %d: expected *ast.BlockStmt, got %T", d.Line, d.Node)
+		return fmt.Errorf("%s at line %d: expected *ast.BlockStmt, got %T", runtimeFunc, line, node)
 	}
 
 	// Walk the outer block in source order, picking out the inner blocks that
@@ -51,18 +59,18 @@ func transformSections(result *parser.ParseResult, d parser.SectionsDirective) e
 	}
 
 	if len(elems) == 0 {
-		return fmt.Errorf("Sections at line %d: no section blocks found", d.Line)
+		return fmt.Errorf("%s at line %d: no section blocks found", runtimeFunc, line)
 	}
 
-	call := buildRuntimeCall("Sections", buildFuncSlice(elems))
+	call := buildRuntimeCall(runtimeFunc, buildFuncSlice(elems))
 
 	if !replaceBlockStmt(result.File, outer, call) {
-		return fmt.Errorf("Sections at line %d: body block not found in AST", d.Line)
+		return fmt.Errorf("%s at line %d: body block not found in AST", runtimeFunc, line)
 	}
 
 	// Strip the sections comment and every section comment so go/format does
 	// not leave them orphaned around the synthesized call.
-	removeDirectiveComment(result.File, d.Pos)
+	removeDirectiveComment(result.File, dirPos)
 	for _, pos := range sectionPositions {
 		removeDirectiveComment(result.File, pos)
 	}
