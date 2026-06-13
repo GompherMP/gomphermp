@@ -29,6 +29,10 @@ func Print(result *parser.ParseResult, path string) error {
 	result.File.Doc = nil
 
 	var buf bytes.Buffer
+	// Defensive: format.Node only errors on a malformed AST, which Transform
+	// never produces - a valid AST formats cleanly, a broken one makes go/format
+	// panic rather than return an error - so this branch is unreachable in normal
+	// operation and cannot be exercised from a test.
 	if err := format.Node(&buf, result.FileSet, result.File); err != nil {
 		return err
 	}
@@ -39,6 +43,9 @@ func Print(result *parser.ParseResult, path string) error {
 	}
 	defer f.Close()
 
+	// Defensive: a write that fails after Create succeeded requires an exotic
+	// descriptor (a full disk, /dev/full, a closed pipe); not reproducible in a
+	// portable test.
 	if _, err := f.WriteString(generatedHeader); err != nil {
 		return err
 	}

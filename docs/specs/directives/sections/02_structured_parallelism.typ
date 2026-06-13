@@ -151,7 +151,7 @@ Define un conjunto de bloques de trabajo independientes distribuibles.
 
 #figure(
   ```go
-  //gompher sections [private(list) | firstprivate(list)]
+  //gompher sections [private(list) | firstprivate(list) | lastprivate(list) | reduction(op:list)]
   {
       //gompher section
       bloque
@@ -160,6 +160,15 @@ Define un conjunto de bloques de trabajo independientes distribuibles.
   }
   ```,
   caption: [Gramática para la definición de secciones independientes]
+)
+
+La forma combinada `parallel sections` provisiona el equipo y distribuye las secciones en un solo paso; acepta las mismas cláusulas de `sections` más `shared(list)` (heredada del lado `parallel`):
+
+#figure(
+  ```go
+  //gompher parallel sections [private(list) | firstprivate(list) | lastprivate(list) | reduction(op:list) | shared(list)]
+  ```,
+  caption: [Sintaxis de la construcción combinada parallel sections]
 )
 
 === Ejemplo de Paralelismo Funcional

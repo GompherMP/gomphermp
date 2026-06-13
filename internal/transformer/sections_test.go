@@ -465,3 +465,42 @@ func TestTransform_Sections_PrivateUndeclared(t *testing.T) {
 		t.Errorf("expected private resolution error, got: %v", err)
 	}
 }
+
+// sectionsClauseError builds a parallel sections with one section and the given
+// clause, transforms it, and returns the error (used to exercise each clause's
+// resolution-failure path in gatherSectionClauses).
+func sectionsClauseError(t *testing.T, clause parser.Clause) error {
+	t.Helper()
+	parsed, err := parser.Parse("package main\n\nfunc main() {}\n")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	section := &ast.BlockStmt{}
+	parsed.Nodes = append(parsed.Nodes,
+		parser.AnnotatedNode{Directive: parser.SectionDirective{Node: section}},
+		parser.AnnotatedNode{Directive: parser.ParallelSectionsDirective{
+			Clauses: []parser.Clause{clause},
+			Node:    &ast.BlockStmt{List: []ast.Stmt{section}},
+		}},
+	)
+	_, err = Transform(parsed)
+	return err
+}
+
+// TestTransform_Sections_ReductionUndeclared verifies the reduction resolution
+// error path in gatherSectionClauses.
+func TestTransform_Sections_ReductionUndeclared(t *testing.T) {
+	err := sectionsClauseError(t, parser.ReductionClause{Operator: "+", Vars: []string{"ghost"}})
+	if err == nil || !strings.Contains(err.Error(), "reduction(ghost)") {
+		t.Errorf("expected reduction resolution error, got: %v", err)
+	}
+}
+
+// TestTransform_Sections_LastprivateUndeclared verifies the lastprivate
+// resolution error path in gatherSectionClauses.
+func TestTransform_Sections_LastprivateUndeclared(t *testing.T) {
+	err := sectionsClauseError(t, parser.LastPrivateClause{Vars: []string{"ghost"}})
+	if err == nil || !strings.Contains(err.Error(), "lastprivate(ghost)") {
+		t.Errorf("expected lastprivate resolution error, got: %v", err)
+	}
+}

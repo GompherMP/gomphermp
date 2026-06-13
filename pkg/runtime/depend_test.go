@@ -418,3 +418,27 @@ func TestTaskWithDepend_StressNoRace(t *testing.T) {
 		t.Errorf("expected counter=%d, got %d (data race in dependency ordering)", n, counter)
 	}
 }
+
+// TestClaimDeps_PrunesFinishedWriter covers the prune path in claimDeps (and the
+// closed-channel branch of isClosed): when an in-dependency's prior writer has
+// already finished (its done channel is closed) claimDeps drops it instead of
+// returning it as a signal to wait on.
+func TestClaimDeps_PrunesFinishedWriter(t *testing.T) {
+	var v int
+	addr := uintptr(unsafe.Pointer(&v))
+
+	// Register a writer for addr, then mark it finished by closing its channel.
+	writerDone := make(chan struct{})
+	claimDeps(writerDone, nil, []uintptr{addr}, nil) // out:addr
+	close(writerDone)
+
+	// A new reader of addr must not wait on the finished writer; it is pruned.
+	readerDone := make(chan struct{})
+	signals := claimDeps(readerDone, []uintptr{addr}, nil, nil) // in:addr
+	if len(signals) != 0 {
+		t.Errorf("expected no signals (finished writer pruned), got %d", len(signals))
+	}
+	if e := getOrCreateEntry(addr); e.writerDone != nil {
+		t.Error("expected the finished writer to be pruned (writerDone == nil)")
+	}
+}

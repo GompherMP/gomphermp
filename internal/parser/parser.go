@@ -453,7 +453,7 @@ var validClauses = map[DirectiveKind][]ClauseKind{
 	DirFor:              {ClausePrivate, ClauseFirstPrivate, ClauseLastPrivate, ClauseReduction, ClauseSchedule},
 	DirParallelFor:      {ClausePrivate, ClauseFirstPrivate, ClauseLastPrivate, ClauseShared, ClauseReduction, ClauseSchedule},
 	DirSections:         {ClausePrivate, ClauseFirstPrivate, ClauseLastPrivate, ClauseReduction},
-	DirParallelSections: {ClausePrivate, ClauseFirstPrivate, ClauseLastPrivate, ClauseReduction},
+	DirParallelSections: {ClausePrivate, ClauseFirstPrivate, ClauseLastPrivate, ClauseReduction, ClauseShared},
 	DirSingle:           {ClausePrivate, ClauseFirstPrivate},
 	DirTask:             {ClausePrivate, ClauseFirstPrivate, ClauseShared, ClauseDepend},
 	DirTaskloop:         {ClausePrivate, ClauseFirstPrivate, ClauseGrainsize},

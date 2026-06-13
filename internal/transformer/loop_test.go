@@ -883,3 +883,54 @@ func TestTransform_ParallelFor_SimpleFormUnchanged(t *testing.T) {
 		}
 	}
 }
+
+// TestTransform_For_ScheduleStaticChunkedWithClause covers the worksharing
+// ForStaticChunked branch of buildWorksharingLoopCall: schedule(static, chunk)
+// combined with a data clause routes through the clause expansion.
+func TestTransform_For_ScheduleStaticChunkedWithClause(t *testing.T) {
+	src := `package main
+
+func main() {
+	sum := 0
+	//gompher parallel
+	{
+		//gompher for schedule(static, 4) reduction(+:sum)
+		for i := 0; i < 16; i++ {
+			sum += i
+		}
+	}
+	_ = sum
+}
+`
+	got := runTransform(t, src)
+	if !strings.Contains(got, "runtime.ForStaticChunked(threadID, func(i int) {") {
+		t.Errorf("expected worksharing ForStaticChunked with clause, got:\n%s", got)
+	}
+	if !strings.Contains(got, ", 4)") {
+		t.Errorf("expected chunk 4 in the call, got:\n%s", got)
+	}
+}
+
+// TestTransform_ParallelFor_PrivatePackageQualifiedType covers the package-name
+// callback in resolveVarType: a private variable whose type is package-qualified
+// (time.Duration) must be rendered with the package's short name.
+func TestTransform_ParallelFor_PrivatePackageQualifiedType(t *testing.T) {
+	src := `package main
+
+import "time"
+
+func main() {
+	d := time.Duration(0)
+	//gompher parallel for private(d)
+	for i := 0; i < 10; i++ {
+		d = time.Duration(i)
+		_ = d
+	}
+	_ = d
+}
+`
+	got := runTransform(t, src)
+	if !strings.Contains(got, "var d time.Duration") {
+		t.Errorf("expected `var d time.Duration` private decl, got:\n%s", got)
+	}
+}

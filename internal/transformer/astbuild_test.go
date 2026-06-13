@@ -217,3 +217,19 @@ func render(t *testing.T, e ast.Expr) string {
 	}
 	return buf.String()
 }
+
+// TestCloneExpr_Ellipsis covers the *ast.Ellipsis branch of cloneExpr, which is
+// not reachable through ParseExpr (`...T` is not a standalone expression).
+func TestCloneExpr_Ellipsis(t *testing.T) {
+	orig := &ast.Ellipsis{Elt: &ast.Ident{Name: "int"}}
+	clone, ok := cloneExpr(orig).(*ast.Ellipsis)
+	if !ok {
+		t.Fatalf("expected *ast.Ellipsis clone, got %T", cloneExpr(orig))
+	}
+	if clone == orig {
+		t.Error("expected a fresh node, got the same pointer")
+	}
+	if id, ok := clone.Elt.(*ast.Ident); !ok || id.Name != "int" {
+		t.Errorf("expected Elt cloned to ident int, got %v", clone.Elt)
+	}
+}

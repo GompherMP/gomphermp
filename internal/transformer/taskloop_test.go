@@ -452,3 +452,27 @@ func TestTransform_PropagatesTaskloopError(t *testing.T) {
 		t.Errorf("expected nil ParseResult on error, got %v", got)
 	}
 }
+
+// TestTransform_Taskloop_NonSimpleLoop covers the normalized (non-simple) path of
+// transformTaskloop: a non-zero lower bound recovers the induction variable from
+// the 0-based counter.
+func TestTransform_Taskloop_NonSimpleLoop(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher taskloop
+	for i := 5; i < 15; i++ {
+		work(i)
+	}
+}
+
+func work(i int) {}
+`
+	got := runTransform(t, src)
+	if !strings.Contains(got, "func(_gompherIter int) {") {
+		t.Errorf("expected normalized counter param, got:\n%s", got)
+	}
+	if !strings.Contains(got, "i := 5 + _gompherIter") {
+		t.Errorf("expected induction recovery `i := 5 + _gompherIter`, got:\n%s", got)
+	}
+}

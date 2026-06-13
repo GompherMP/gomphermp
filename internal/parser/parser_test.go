@@ -632,6 +632,36 @@ func TestParseDirectiveText_SingleRejectsShared(t *testing.T) {
 	}
 }
 
+// TestParseDirectiveText_ParallelSectionsAcceptsShared verifies that the
+// combined parallel sections accepts shared (inherited from the parallel side,
+// like parallel for). In Go it is a no-op, but accepting it keeps the combined
+// constructs consistent and faithful to OpenMP.
+func TestParseDirectiveText_ParallelSectionsAcceptsShared(t *testing.T) {
+	if _, err := parseDirectiveText("parallel sections shared(x)", 0, 1); err != nil {
+		t.Fatalf("parallel sections should accept shared: %v", err)
+	}
+}
+
+// TestParseDirectiveText_SectionsRejectsShared verifies that the bare
+// (worksharing) sections does not take shared - only the combined parallel
+// sections does, mirroring for vs parallel for.
+func TestParseDirectiveText_SectionsRejectsShared(t *testing.T) {
+	if _, err := parseDirectiveText("sections shared(x)", 0, 1); err == nil {
+		t.Fatal("expected error: sections does not accept shared")
+	}
+}
+
+// TestParseDirectiveText_SectionsAcceptsLastprivateReduction verifies the two
+// clauses added to sections (both standard OpenMP sections clauses).
+func TestParseDirectiveText_SectionsAcceptsLastprivateReduction(t *testing.T) {
+	if _, err := parseDirectiveText("sections lastprivate(x)", 0, 1); err != nil {
+		t.Fatalf("sections should accept lastprivate: %v", err)
+	}
+	if _, err := parseDirectiveText("sections reduction(+:s)", 0, 1); err != nil {
+		t.Fatalf("sections should accept reduction: %v", err)
+	}
+}
+
 func TestParseDirectiveText_TaskRejectsSchedule(t *testing.T) {
 	_, err := parseDirectiveText("task schedule(static)", 0, 1)
 	if err == nil {
