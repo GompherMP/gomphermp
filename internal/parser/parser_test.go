@@ -490,24 +490,12 @@ func TestParseDirectiveText_TaskShared(t *testing.T) {
 	}
 }
 
-func TestParseDirectiveText_TaskReduction(t *testing.T) {
-	dir, err := parseDirectiveText("task reduction(+:sum)", 0, 1)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	d, ok := dir.(TaskDirective)
-	if !ok {
-		t.Fatalf("expected TaskDirective, got %T", dir)
-	}
-	if len(d.Clauses) != 1 {
-		t.Errorf("expected 1 clause, got %d", len(d.Clauses))
-	}
-	rc, ok := d.Clauses[0].(ReductionClause)
-	if !ok {
-		t.Errorf("expected ReductionClause, got %T", d.Clauses[0])
-	}
-	if rc.Operator != "+" || len(rc.Vars) != 1 || rc.Vars[0] != "sum" {
-		t.Errorf("unexpected reduction clause: %+v", rc)
+// TestParseDirectiveText_TaskRejectsReduction verifies that reduction is not a
+// valid clause on a task.
+func TestParseDirectiveText_TaskRejectsReduction(t *testing.T) {
+	_, err := parseDirectiveText("task reduction(+:sum)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: task does not accept reduction")
 	}
 }
 
@@ -618,10 +606,22 @@ func TestParseDirectiveText_SectionsRejectsDepend(t *testing.T) {
 	}
 }
 
-func TestParseDirectiveText_ForRejectsReduction(t *testing.T) {
-	_, err := parseDirectiveText("for reduction(+:x)", 0, 1)
+func TestParseDirectiveText_ForAcceptsReductionAndLastprivate(t *testing.T) {
+	// The worksharing for construct accepts reduction and lastprivate,
+	// expanded by the transformer over the surrounding team.
+	if _, err := parseDirectiveText("for reduction(+:x)", 0, 1); err != nil {
+		t.Fatalf("for should accept reduction: %v", err)
+	}
+	if _, err := parseDirectiveText("for lastprivate(x)", 0, 1); err != nil {
+		t.Fatalf("for should accept lastprivate: %v", err)
+	}
+}
+
+func TestParseDirectiveText_ForRejectsShared(t *testing.T) {
+	// shared is a parallel-level clause; the worksharing for does not take it.
+	_, err := parseDirectiveText("for shared(x)", 0, 1)
 	if err == nil {
-		t.Fatal("expected error: for does not accept reduction")
+		t.Fatal("expected error: for does not accept shared")
 	}
 }
 

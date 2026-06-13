@@ -2,6 +2,7 @@ package transformer
 
 import (
 	"go/ast"
+	"go/format"
 	"go/token"
 	"strings"
 	"testing"
@@ -130,6 +131,91 @@ func main() {
 	}
 }
 
+// TestTransform_Taskloop_Private verifies that private(s) declares a fresh copy
+// inside the per-iteration closure.
+func TestTransform_Taskloop_Private(t *testing.T) {
+	src := `package main
+
+func main() {
+	s := 0
+	//gompher taskloop
+	for i := 0; i < 10; i++ {
+		s = i
+		_ = s
+	}
+	_ = s
+}
+`
+	// Note: private is parsed/applied via the clause path; declare it on the
+	// directive directly to keep the source compilable as raw Go.
+	got := runTransformTaskloopClause(t, src, parser.PrivateClause{Vars: []string{"s"}})
+	if !strings.Contains(got, "runtime.Taskloop(func(i int) {") {
+		t.Fatalf("expected Taskloop closure, got:\n%s", got)
+	}
+	declIdx := strings.Index(got, "var s int")
+	bodyIdx := strings.Index(got, "s = i")
+	if !(declIdx >= 0 && declIdx < bodyIdx) {
+		t.Errorf("expected `var s int` before body; decl=%d body=%d\n%s", declIdx, bodyIdx, got)
+	}
+}
+
+// TestTransform_Taskloop_Firstprivate verifies that firstprivate(base) captures
+// the outer value once before the call and shadows it inside the closure.
+func TestTransform_Taskloop_Firstprivate(t *testing.T) {
+	src := `package main
+
+func main() {
+	base := 5
+	//gompher taskloop
+	for i := 0; i < 10; i++ {
+		_ = base + i
+	}
+	_ = base
+}
+`
+	got := runTransformTaskloopClause(t, src, parser.FirstPrivateClause{Vars: []string{"base"}})
+	for _, want := range []string{"_fp_base := base", "runtime.Taskloop(func(i int) {", "base := _fp_base"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("expected %q in firstprivate taskloop output, got:\n%s", want, got)
+		}
+	}
+	if capIdx, tlIdx := strings.Index(got, "_fp_base := base"), strings.Index(got, "runtime.Taskloop"); !(capIdx >= 0 && capIdx < tlIdx) {
+		t.Errorf("expected capture before Taskloop; cap=%d tl=%d\n%s", capIdx, tlIdx, got)
+	}
+}
+
+// runTransformTaskloopClause parses src (a valid raw-Go taskloop without
+// clauses), injects clause onto the taskloop directive, transforms, and returns
+// the formatted output. This keeps the example source compilable while still
+// exercising the clause path.
+func runTransformTaskloopClause(t *testing.T, src string, clause parser.Clause) string {
+	t.Helper()
+	parsed, err := parser.Parse(src)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	injected := false
+	for i, n := range parsed.Nodes {
+		if tl, ok := n.Directive.(parser.TaskloopDirective); ok {
+			tl.Clauses = append(tl.Clauses, clause)
+			parsed.Nodes[i].Directive = tl
+			injected = true
+		}
+	}
+	if !injected {
+		t.Fatal("no taskloop directive found to inject clause")
+	}
+	transformed, err := Transform(parsed)
+	if err != nil {
+		t.Fatalf("transform: %v", err)
+	}
+	var buf strings.Builder
+	if err := format.Node(&buf, transformed.FileSet, transformed.File); err != nil {
+		t.Fatalf("format: %v", err)
+	}
+	return buf.String()
+}
+
 // TestTransform_Taskloop_LiteralBound verifies that a literal integer bound
 // is preserved as-is in the emitted call.
 func TestTransform_Taskloop_LiteralBound(t *testing.T) {
@@ -190,7 +276,7 @@ func TestTransformTaskloop_NoInitStatement(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for missing init statement")
 	}
-	if !strings.Contains(err.Error(), "no init statement") {
+	if !strings.Contains(err.Error(), "init") {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }
@@ -219,15 +305,16 @@ func TestTransformTaskloop_NonBinaryCondition(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for non-BinaryExpr condition")
 	}
-	if !strings.Contains(err.Error(), "binary expression") {
+	if !strings.Contains(err.Error(), "condition must compare") {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }
 
-// TestTransformTaskloop_WrongOperator verifies that a BinaryExpr condition
-// using an operator other than '<' (e.g. '<=') returns a descriptive error.
-// The code path checks binExpr.Op != token.LSS specifically.
-func TestTransformTaskloop_WrongOperator(t *testing.T) {
+// TestTransformTaskloop_NonCanonicalStep verifies that a for loop whose step is
+// not an increment/decrement (here a missing post statement) is rejected. The
+// '<=' operator is now accepted (normalized), so the rejection comes from the
+// step shape rather than the condition operator.
+func TestTransformTaskloop_NonCanonicalStep(t *testing.T) {
 	parsed, err := parser.Parse("package main\n")
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -241,19 +328,20 @@ func TestTransformTaskloop_WrongOperator(t *testing.T) {
 				Rhs: []ast.Expr{&ast.BasicLit{Kind: token.INT, Value: "0"}},
 			},
 			Cond: &ast.BinaryExpr{
-				Op: token.LEQ, // <= instead of <
+				Op: token.LSS,
 				X:  &ast.Ident{Name: "i"},
 				Y:  &ast.Ident{Name: "n"},
 			},
+			Post: nil, // no step statement
 			Body: &ast.BlockStmt{},
 		},
 	}
 
 	err = transformTaskloop(parsed, bogus)
 	if err == nil {
-		t.Fatal("expected error for non-LSS operator in for condition")
+		t.Fatal("expected error for missing/non-canonical step")
 	}
-	if !strings.Contains(err.Error(), "'<'") {
+	if !strings.Contains(err.Error(), "step must be") {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }
@@ -279,6 +367,7 @@ func TestTransformTaskloop_ForStmtNotInAST(t *testing.T) {
 			X:  &ast.Ident{Name: "i"},
 			Y:  &ast.Ident{Name: "n"},
 		},
+		Post: &ast.IncDecStmt{X: &ast.Ident{Name: "i"}, Tok: token.INC},
 		Body: &ast.BlockStmt{},
 	}
 

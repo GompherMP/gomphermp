@@ -449,14 +449,14 @@ func extractKind(text string) (DirectiveKind, string, error) {
 // validClauses defines the strict compliance mapping for OpenMP directives.
 // Contextless or synchronization directives accept no clauses and are omitted here.
 var validClauses = map[DirectiveKind][]ClauseKind{
-	DirParallel:    {ClausePrivate, ClauseFirstPrivate, ClauseShared},
-	DirFor:         {ClausePrivate, ClauseFirstPrivate, ClauseSchedule},
-	DirParallelFor: {ClausePrivate, ClauseFirstPrivate, ClauseLastPrivate, ClauseShared, ClauseReduction, ClauseSchedule},
+	DirParallel:         {ClausePrivate, ClauseFirstPrivate, ClauseShared},
+	DirFor:              {ClausePrivate, ClauseFirstPrivate, ClauseLastPrivate, ClauseReduction, ClauseSchedule},
+	DirParallelFor:      {ClausePrivate, ClauseFirstPrivate, ClauseLastPrivate, ClauseShared, ClauseReduction, ClauseSchedule},
 	DirSections:         {ClausePrivate, ClauseFirstPrivate, ClauseLastPrivate, ClauseReduction},
 	DirParallelSections: {ClausePrivate, ClauseFirstPrivate, ClauseLastPrivate, ClauseReduction},
-	DirSingle:      {ClausePrivate, ClauseFirstPrivate},
-	DirTask:        {ClausePrivate, ClauseFirstPrivate, ClauseShared, ClauseReduction, ClauseDepend},
-	DirTaskloop:    {ClausePrivate, ClauseFirstPrivate, ClauseGrainsize},
+	DirSingle:           {ClausePrivate, ClauseFirstPrivate},
+	DirTask:             {ClausePrivate, ClauseFirstPrivate, ClauseShared, ClauseDepend},
+	DirTaskloop:         {ClausePrivate, ClauseFirstPrivate, ClauseGrainsize},
 }
 
 // validateClauses cross-references extracted clauses against the validClauses map,

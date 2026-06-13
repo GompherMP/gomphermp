@@ -199,6 +199,54 @@ func ParallelForDynamic(body func(int), iterations, chunkSize int) {
 	})
 }
 
+// ForStaticChunked is the static-schedule worksharing construct with an explicit
+// chunk size: schedule(static, chunkSize). It is called from inside a
+// parallel region by every goroutine of the team. The iteration space is divided
+// into fixed chunks of chunkSize consecutive iterations, and the chunks are dealt
+// out to the team round-robin: thread threadID runs chunks threadID,
+// threadID+size, threadID+2*size, ... This block-cyclic mapping is fixed up
+// front.
+func ForStaticChunked(threadID int, body func(int), iterations, chunkSize int) {
+	team := getCurrentTeam()
+	if team == nil {
+		for i := 0; i < iterations; i++ {
+			body(i)
+		}
+		return
+	}
+
+	if chunkSize <= 0 {
+		chunkSize = 1
+	}
+	size := team.size
+	for chunk := threadID; ; chunk += size {
+		start := chunk * chunkSize
+		if start >= iterations {
+			break
+		}
+		end := start + chunkSize
+		if end > iterations {
+			end = iterations
+		}
+		for i := start; i < end; i++ {
+			body(i)
+		}
+	}
+	Barrier()
+}
+
+// ParallelForStaticChunked is the combined construct: it creates a team and runs
+// a static-chunked loop across it in a single call. It is a ForStaticChunked
+// worksharing construct inside a Parallel region.
+func ParallelForStaticChunked(body func(int), iterations, chunkSize int) {
+	if iterations <= 0 {
+		return
+	}
+	Parallel(func(threadID int) {
+		ForStaticChunked(threadID, body, iterations, chunkSize)
+	})
+}
+
 // Sections is a worksharing construct: it is called from inside a parallel
 // region by every goroutine of the team, and the team collectively claims the
 // blocks from the shared cursor (dynamic distribution) so each runs exactly

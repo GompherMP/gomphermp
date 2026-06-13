@@ -300,3 +300,168 @@ func TestTransform_PropagatesParallelSectionsError(t *testing.T) {
 		t.Errorf("expected nil ParseResult on error, got %v", got)
 	}
 }
+
+// TestTransform_ParallelSections_Reduction verifies that reduction(+:total) on a
+// sections construct gives each section a private accumulator (identity 0), folds
+// it back through the captured pointer under a critical section, and captures the
+// pointer once before the call.
+func TestTransform_ParallelSections_Reduction(t *testing.T) {
+	src := `package main
+
+func main() {
+	total := 0
+	//gompher parallel sections reduction(+:total)
+	{
+		//gompher section
+		{
+			total += 1
+		}
+		//gompher section
+		{
+			total += 2
+		}
+	}
+	_ = total
+}
+`
+	got := runTransform(t, src)
+	for _, want := range []string{
+		"_red_total := &total",          // pointer capture before the call
+		"var total int = 0",             // per-section accumulator
+		`runtime.Critical("", func() {`, // combine under mutual exclusion
+		"*_red_total += total",          // fold each section's partial
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("expected %q in sections reduction output, got:\n%s", want, got)
+		}
+	}
+	// Two sections => two accumulators and two combines.
+	if n := strings.Count(got, "var total int = 0"); n != 2 {
+		t.Errorf("expected 2 accumulators, got %d:\n%s", n, got)
+	}
+	if n := strings.Count(got, "*_red_total += total"); n != 2 {
+		t.Errorf("expected 2 combines, got %d:\n%s", n, got)
+	}
+}
+
+// TestTransform_Sections_Lastprivate verifies that lastprivate(x) makes x private
+// in every section and writes it back only from the lexically last section; the
+// non-last sections get a `_ = x` so the privatized copy is used.
+func TestTransform_Sections_Lastprivate(t *testing.T) {
+	src := `package main
+
+func main() {
+	x := 0
+	//gompher parallel sections lastprivate(x)
+	{
+		//gompher section
+		{
+			x = 1
+		}
+		//gompher section
+		{
+			x = 2
+		}
+	}
+	_ = x
+}
+`
+	got := runTransform(t, src)
+	if !strings.Contains(got, "_lp_x := &x") {
+		t.Errorf("expected pointer capture `_lp_x := &x`, got:\n%s", got)
+	}
+	if n := strings.Count(got, "var x int"); n != 2 {
+		t.Errorf("expected x private in both sections, got %d:\n%s", n, got)
+	}
+	// Exactly one write-back (the last section) and one blank use (the first).
+	if n := strings.Count(got, "*_lp_x = x"); n != 1 {
+		t.Errorf("expected 1 write-back, got %d:\n%s", n, got)
+	}
+	if !strings.Contains(got, "_ = x") {
+		t.Errorf("expected blank use `_ = x` in the non-last section, got:\n%s", got)
+	}
+}
+
+// TestTransform_Sections_PrivateFirstprivate verifies private/firstprivate on
+// sections: each section shadows the variable, and firstprivate captures the
+// outer value once before the call.
+func TestTransform_Sections_PrivateFirstprivate(t *testing.T) {
+	src := `package main
+
+func main() {
+	base := 5
+	scratch := 0
+	//gompher parallel sections firstprivate(base) private(scratch)
+	{
+		//gompher section
+		{
+			scratch = base + 1
+			_ = scratch
+		}
+		//gompher section
+		{
+			scratch = base + 2
+			_ = scratch
+		}
+	}
+	_, _ = base, scratch
+}
+`
+	got := runTransform(t, src)
+	if !strings.Contains(got, "_fp_base := base") {
+		t.Errorf("expected firstprivate capture, got:\n%s", got)
+	}
+	if n := strings.Count(got, "base := _fp_base"); n != 2 {
+		t.Errorf("expected firstprivate shadow in both sections, got %d:\n%s", n, got)
+	}
+	if n := strings.Count(got, "var scratch int"); n != 2 {
+		t.Errorf("expected private scratch in both sections, got %d:\n%s", n, got)
+	}
+}
+
+// TestTransform_Sections_NoClausesUnchanged verifies the fast path: a sections
+// construct without data clauses still emits bare closures (no shadows/captures).
+func TestTransform_Sections_NoClausesUnchanged(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel sections
+	{
+		//gompher section
+		{
+			work(1)
+		}
+		//gompher section
+		{
+			work(2)
+		}
+	}
+}
+
+func work(i int) {}
+`
+	got := runTransform(t, src)
+	if strings.Contains(got, "_fp_") || strings.Contains(got, "_red_") || strings.Contains(got, "_lp_") {
+		t.Errorf("expected no clause machinery for clause-free sections, got:\n%s", got)
+	}
+}
+
+// TestTransform_Sections_PrivateUndeclared verifies that a private clause on
+// sections naming a variable whose type cannot be resolved surfaces an error.
+func TestTransform_Sections_PrivateUndeclared(t *testing.T) {
+	parsed, err := parser.Parse("package main\n\nfunc main() {}\n")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	section := &ast.BlockStmt{}
+	parsed.Nodes = append(parsed.Nodes,
+		parser.AnnotatedNode{Directive: parser.SectionDirective{Node: section}},
+		parser.AnnotatedNode{Directive: parser.ParallelSectionsDirective{
+			Clauses: []parser.Clause{parser.PrivateClause{Vars: []string{"ghost"}}},
+			Node:    &ast.BlockStmt{List: []ast.Stmt{section}},
+		}},
+	)
+	if _, err := Transform(parsed); err == nil || !strings.Contains(err.Error(), "private(ghost)") {
+		t.Errorf("expected private resolution error, got: %v", err)
+	}
+}

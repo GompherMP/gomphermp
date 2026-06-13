@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"sort"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -769,5 +770,96 @@ func TestParallelSections_DifferentBodies(t *testing.T) {
 
 	if !ranA || !ranB || !ranC {
 		t.Errorf("expected all sections to run; got ranA=%v ranB=%v ranC=%v", ranA, ranB, ranC)
+	}
+}
+
+// TestForStaticChunked_RoundRobinDistribution verifies the block-cyclic mapping
+// of schedule(static, chunk): with a team of 2 and chunk 2 over [0,10), thread 0
+// takes chunks 0,2,4 and thread 1 takes chunks 1,3.
+func TestForStaticChunked_RoundRobinDistribution(t *testing.T) {
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
+	SetPoolSize(2)
+
+	var mu sync.Mutex
+	got := map[int][]int{}
+	Parallel(func(tid int) {
+		ForStaticChunked(tid, func(i int) {
+			mu.Lock()
+			got[tid] = append(got[tid], i)
+			mu.Unlock()
+		}, 10, 2)
+	})
+
+	want := map[int][]int{
+		0: {0, 1, 4, 5, 8, 9}, // chunks 0,2,4
+		1: {2, 3, 6, 7},       // chunks 1,3
+	}
+	for tid, w := range want {
+		g := got[tid]
+		sort.Ints(g)
+		if len(g) != len(w) {
+			t.Fatalf("thread %d: got %v, want %v", tid, g, w)
+		}
+		for i := range w {
+			if g[i] != w[i] {
+				t.Errorf("thread %d: got %v, want %v", tid, g, w)
+				break
+			}
+		}
+	}
+}
+
+// TestParallelForStaticChunked_AllIterationsOnce verifies the combined construct
+// runs every iteration exactly once even when the chunk size does not divide the
+// space evenly.
+func TestParallelForStaticChunked_AllIterationsOnce(t *testing.T) {
+	const iterations = 23
+	counts := make([]int32, iterations)
+	ParallelForStaticChunked(func(i int) {
+		atomic.AddInt32(&counts[i], 1)
+	}, iterations, 4)
+	for i, c := range counts {
+		if c != 1 {
+			t.Errorf("iteration %d ran %d times, want 1", i, c)
+		}
+	}
+}
+
+// TestForStaticChunked_StandaloneSequential verifies that, called without a team,
+// ForStaticChunked runs the whole loop in order.
+func TestForStaticChunked_StandaloneSequential(t *testing.T) {
+	var order []int
+	ForStaticChunked(0, func(i int) {
+		order = append(order, i)
+	}, 5, 2)
+	for i := 0; i < 5; i++ {
+		if order[i] != i {
+			t.Fatalf("expected sequential order, got %v", order)
+		}
+	}
+}
+
+// TestParallelForStaticChunked_ZeroIterations verifies the no-op guard.
+func TestParallelForStaticChunked_ZeroIterations(t *testing.T) {
+	called := false
+	ParallelForStaticChunked(func(int) { called = true }, 0, 4)
+	if called {
+		t.Error("expected no calls for zero iterations")
+	}
+}
+
+// TestForStaticChunked_InvalidChunkDefaultsToOne verifies a non-positive chunk
+// size is treated as 1, still covering the whole space exactly once.
+func TestForStaticChunked_InvalidChunkDefaultsToOne(t *testing.T) {
+	const iterations = 8
+	counts := make([]int32, iterations)
+	ParallelForStaticChunked(func(i int) {
+		atomic.AddInt32(&counts[i], 1)
+	}, iterations, 0)
+	for i, c := range counts {
+		if c != 1 {
+			t.Errorf("iteration %d ran %d times, want 1", i, c)
+		}
 	}
 }

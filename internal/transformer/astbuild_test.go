@@ -1,9 +1,14 @@
 package transformer
 
 import (
+	"bytes"
 	"go/ast"
+	"go/format"
+	goparser "go/parser"
 	"go/token"
+	"reflect"
 	"testing"
+
 	"github.com/gomphermp/gomphermp/internal/parser"
 )
 
@@ -152,4 +157,63 @@ func main() {}
 	if got := len(parsed.File.Comments); got != before {
 		t.Errorf("expected %d comments preserved, got %d", before, got)
 	}
+}
+
+// TestCloneExpr_DeepCopiesAndPreservesRendering verifies cloneExpr produces a
+// structurally independent copy (distinct node pointers) that renders to the
+// same source text, across the expression shapes that occur as loop bounds.
+func TestCloneExpr_DeepCopiesAndPreservesRendering(t *testing.T) {
+	srcs := []string{
+		"n",                 // Ident
+		"10",                // BasicLit
+		"len(values)",       // CallExpr + Ident args
+		"pkg.Count",         // SelectorExpr
+		"data[0]",           // IndexExpr
+		"(a + b)",           // ParenExpr + BinaryExpr
+		"*p",                // StarExpr
+		"-k",                // UnaryExpr
+		"len(a) + len(b)*2", // nested CallExpr/BinaryExpr
+		"[]int",             // ArrayType (slice, nil Len)
+		"[3]int",            // ArrayType (array, with Len)
+		"map[string]int",    // MapType
+		"chan int",          // ChanType
+		"[]map[string]*T",   // nested composite type
+	}
+	for _, src := range srcs {
+		orig, err := goparser.ParseExpr(src)
+		if err != nil {
+			t.Fatalf("parse %q: %v", src, err)
+		}
+		clone := cloneExpr(orig)
+
+		// The clone must render identically...
+		if render(t, orig) != render(t, clone) {
+			t.Errorf("%q: clone rendered differently: %q vs %q", src, render(t, orig), render(t, clone))
+		}
+		// ...but must not share the root node with the original.
+		if reflect.ValueOf(orig).Pointer() == reflect.ValueOf(clone).Pointer() {
+			t.Errorf("%q: clone shares the root node with the original", src)
+		}
+	}
+}
+
+// TestCloneExpr_UnhandledShapeReturnedAsIs verifies the conservative fallback:
+// an expression shape cloneExpr does not special-case is returned unchanged
+// (sharing is only a cosmetic concern, never a correctness one).
+func TestCloneExpr_UnhandledShapeReturnedAsIs(t *testing.T) {
+	// A composite literal is not among the handled bound shapes.
+	lit := &ast.CompositeLit{Type: &ast.Ident{Name: "T"}}
+	if got := cloneExpr(lit); got != ast.Expr(lit) {
+		t.Errorf("expected unhandled shape returned as-is, got a different node")
+	}
+}
+
+// render formats an expression to source text for comparison.
+func render(t *testing.T, e ast.Expr) string {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := format.Node(&buf, token.NewFileSet(), e); err != nil {
+		t.Fatalf("format: %v", err)
+	}
+	return buf.String()
 }

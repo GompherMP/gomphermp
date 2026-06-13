@@ -125,3 +125,86 @@ func TestTransform_PropagatesSingleError(t *testing.T) {
 		t.Errorf("expected nil ParseResult on error, got %v", got)
 	}
 }
+
+// TestTransform_Single_Private verifies that private(x) on a single declares a
+// fresh per-region copy inside the Single closure, shadowing the outer one.
+func TestTransform_Single_Private(t *testing.T) {
+	src := `package main
+
+func main() {
+	x := 0
+	//gompher parallel
+	{
+		//gompher single private(x)
+		{
+			x = 1
+			_ = x
+		}
+	}
+	_ = x
+}
+`
+	got := runTransform(t, src)
+	if !strings.Contains(got, "runtime.Single(func() {") {
+		t.Fatalf("expected Single call, got:\n%s", got)
+	}
+	// The private declaration must sit inside the Single closure, before the body.
+	singleIdx := strings.Index(got, "runtime.Single")
+	declIdx := strings.Index(got, "var x int")
+	bodyIdx := strings.Index(got, "x = 1")
+	if !(singleIdx < declIdx && declIdx < bodyIdx) {
+		t.Errorf("expected `var x int` between Single and body; single=%d decl=%d body=%d\n%s", singleIdx, declIdx, bodyIdx, got)
+	}
+}
+
+// TestTransform_Single_Firstprivate verifies that firstprivate(y) captures the
+// outer value before the call and shadows y with it inside the closure.
+func TestTransform_Single_Firstprivate(t *testing.T) {
+	src := `package main
+
+func main() {
+	y := 7
+	//gompher parallel
+	{
+		//gompher single firstprivate(y)
+		{
+			y = y + 1
+			_ = y
+		}
+	}
+	_ = y
+}
+`
+	got := runTransform(t, src)
+	for _, want := range []string{
+		"_fp_y := y",                   // capture before the call
+		"runtime.Single(func() {",      // the single closure
+		"y := _fp_y",                   // shadow with the captured value
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("expected %q in firstprivate single output, got:\n%s", want, got)
+		}
+	}
+	// The capture must precede the Single call.
+	if capIdx, singleIdx := strings.Index(got, "_fp_y := y"), strings.Index(got, "runtime.Single"); !(capIdx >= 0 && capIdx < singleIdx) {
+		t.Errorf("expected capture before Single; cap=%d single=%d\n%s", capIdx, singleIdx, got)
+	}
+}
+
+// TestTransform_Single_PrivateUndeclared verifies that a private clause naming a
+// variable whose type cannot be resolved surfaces a descriptive error.
+func TestTransform_Single_PrivateUndeclared(t *testing.T) {
+	parsed, err := parser.Parse("package main\n\nfunc main() {}\n")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	parsed.Nodes = append(parsed.Nodes, parser.AnnotatedNode{
+		Directive: parser.SingleDirective{
+			Clauses: []parser.Clause{parser.PrivateClause{Vars: []string{"ghost"}}},
+			Node:    &ast.BlockStmt{},
+		},
+	})
+	if _, err := Transform(parsed); err == nil || !strings.Contains(err.Error(), "private(ghost)") {
+		t.Errorf("expected private resolution error, got: %v", err)
+	}
+}

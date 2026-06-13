@@ -8,42 +8,42 @@ import (
 	"github.com/gomphermp/gomphermp/internal/parser"
 )
 
-// transformSections rewrites a //gompher sections block and its nested
-// //gompher section blocks into a single runtime.Sections call (the worksharing
-// form, distributed across the enclosing parallel team).
-//
-//	//gompher sections          runtime.Sections([]func(){
-//	{                               func() { A },
-//	    //gompher section           func() { B },
-//	    { A }                   })
-//	    //gompher section
-//	    { B }
-//	}
+// transformSections rewrites a //gompher sections block and its nested //gompher
+// section blocks into one runtime.Sections call - one func() closure per section,
+// distributed across the enclosing parallel team.
 func transformSections(result *parser.ParseResult, d parser.SectionsDirective) error {
-	return transformSectionsConstruct(result, d.Node, d.Pos, d.Line, "Sections")
+	return transformSectionsConstruct(result, d.Node, d.Pos, d.Line, d.Clauses, "Sections")
 }
 
 // transformParallelSections rewrites a //gompher parallel sections block into a
 // runtime.ParallelSections call: the combined construct that provisions a team
 // and distributes the section blocks across it in one step.
 func transformParallelSections(result *parser.ParseResult, d parser.ParallelSectionsDirective) error {
-	return transformSectionsConstruct(result, d.Node, d.Pos, d.Line, "ParallelSections")
+	return transformSectionsConstruct(result, d.Node, d.Pos, d.Line, d.Clauses, "ParallelSections")
 }
 
-// transformSectionsConstruct implements the shared rewrite for sections and
-// parallel sections. Each nested section's body becomes one func() closure
-// element of the []func() slice passed to runtimeFunc.
-func transformSectionsConstruct(result *parser.ParseResult, node ast.Node, dirPos token.Pos, line int, runtimeFunc string) error {
+// transformSectionsConstruct is the shared rewrite for sections and parallel
+// sections: each section body becomes one func() element of the []func() passed
+// to runtimeFunc. Data-sharing clauses are applied per section: private/
+// firstprivate shadow the variable in each closure (firstprivate captured once
+// before the call); reduction folds a per-section private copy back under a
+// critical section; lastprivate is private in every section and written back
+// from the lexically last one.
+func transformSectionsConstruct(result *parser.ParseResult, node ast.Node, dirPos token.Pos, line int, clauses []parser.Clause, runtimeFunc string) error {
 	outer, ok := node.(*ast.BlockStmt)
 	if !ok {
 		return fmt.Errorf("%s at line %d: expected *ast.BlockStmt, got %T", runtimeFunc, line, node)
 	}
 
-	// Walk the outer block in source order, picking out the inner blocks that
-	// the parser tagged as sections. Matching by pointer against the parsed
-	// SectionDirective nodes guarantees we only wrap genuine section blocks
-	// (and, for nested sections, only those belonging to this construct).
-	var elems []ast.Expr
+	cd, err := gatherSectionClauses(result, clauses, dirPos)
+	if err != nil {
+		return fmt.Errorf("%s at line %d: %w", runtimeFunc, line, err)
+	}
+
+	// Collect the inner blocks the parser tagged as sections, in source order.
+	// Matching by pointer against the parsed SectionDirective nodes ensures we
+	// only wrap genuine sections belonging to this construct.
+	var blocks []*ast.BlockStmt
 	var sectionPositions []token.Pos
 	for _, stmt := range outer.List {
 		block, ok := stmt.(*ast.BlockStmt)
@@ -54,22 +54,42 @@ func transformSectionsConstruct(result *parser.ParseResult, node ast.Node, dirPo
 		if !found {
 			continue
 		}
-		elems = append(elems, buildClosure(block))
+		blocks = append(blocks, block)
 		sectionPositions = append(sectionPositions, sd.Pos)
 	}
 
-	if len(elems) == 0 {
+	if len(blocks) == 0 {
 		return fmt.Errorf("%s at line %d: no section blocks found", runtimeFunc, line)
+	}
+
+	elems := make([]ast.Expr, len(blocks))
+	for i, block := range blocks {
+		body := block
+		if !cd.empty() {
+			isLast := i == len(blocks)-1
+			stmts := append([]ast.Stmt{}, cd.sectionPrefix()...)
+			stmts = append(stmts, block.List...)
+			stmts = append(stmts, cd.sectionSuffix(isLast)...)
+			body = &ast.BlockStmt{List: stmts}
+		}
+		elems[i] = buildClosure(body)
 	}
 
 	call := buildRuntimeCall(runtimeFunc, buildFuncSlice(elems))
 
-	if !replaceBlockStmt(result.File, outer, call) {
+	captures := cd.captures()
+	var replaced bool
+	if len(captures) > 0 {
+		replaced = replaceBlockStmtWithPrefix(result.File, outer, call, captures)
+	} else {
+		replaced = replaceBlockStmt(result.File, outer, call)
+	}
+	if !replaced {
 		return fmt.Errorf("%s at line %d: body block not found in AST", runtimeFunc, line)
 	}
 
-	// Strip the sections comment and every section comment so go/format does
-	// not leave them orphaned around the synthesized call.
+	// Strip the sections and section comments so go/format does not leave them
+	// orphaned around the synthesized call.
 	removeDirectiveComment(result.File, dirPos)
 	for _, pos := range sectionPositions {
 		removeDirectiveComment(result.File, pos)

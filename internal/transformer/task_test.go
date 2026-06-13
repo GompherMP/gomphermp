@@ -658,9 +658,12 @@ func main() {
 	}
 }
 
-// TestTransform_Task_Private_ShortDecl_Error verifies that private(x) on a
-// variable declared with := (no explicit type) returns a clear error.
-func TestTransform_Task_Private_ShortDecl_Error(t *testing.T) {
+// TestTransform_Task_Private_ShortDecl verifies that private(x) on a variable
+// declared with := (no explicit type) resolves correctly: go/types infers the
+// type, so the closure gets a `var x int` declaration. (This used to be an
+// error under the syntactic type lookup; the go/types resolver removed that
+// limitation.)
+func TestTransform_Task_Private_ShortDecl(t *testing.T) {
 	src := `package main
 
 func main() {
@@ -671,17 +674,10 @@ func main() {
 	}
 }
 `
-	parsed, err := parser.Parse(src)
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
+	got := runTransform(t, src)
 
-	_, err = Transform(parsed)
-	if err == nil {
-		t.Fatal("expected error for short-decl variable with private clause")
-	}
-	if !strings.Contains(err.Error(), "explicit") {
-		t.Errorf("expected error to mention 'explicit', got: %v", err)
+	if !strings.Contains(got, "var x int") {
+		t.Errorf("expected private(x) to resolve to `var x int`, got:\n%s", got)
 	}
 }
 

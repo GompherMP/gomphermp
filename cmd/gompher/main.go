@@ -16,8 +16,32 @@ import (
 
 const version = "0.1.0"
 
+// helpText is the --help output: usage and command-line flags.
+const helpText = `GompherMP - Structured parallelism transpiler for Go
+
+Usage:
+  gompher build [options] <file.go>    transpile the directives and compile to a binary
+  gompher --version                    print the version
+
+Options:
+  -o, --output <path>    output binary path (default: ./<file>)
+  -v, --verbose          print the pipeline phases and detected directives
+  -k, --keep-temp        keep the generated intermediate .go file
+  -h, --help             show this help
+`
+
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+}
+
+// hasArg reports whether any element of args equals flag.
+func hasArg(args []string, flag string) bool {
+	for _, a := range args {
+		if a == flag {
+			return true
+		}
+	}
+	return false
 }
 
 // run is the testable entry point of the CLI. It returns a process exit code
@@ -25,6 +49,11 @@ func main() {
 // process streams, so tests can drive it with captured buffers and assert on
 // both the result code and the emitted text.
 func run(args []string, stdout, stderr io.Writer) int {
+	if hasArg(args, "--help") || hasArg(args, "-h") {
+		fmt.Fprint(stdout, helpText)
+		return 0
+	}
+
 	if len(args) == 1 && args[0] == "--version" {
 		fmt.Fprintln(stdout, "gompher version", version)
 		return 0
@@ -33,6 +62,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 1 || args[0] != "build" {
 		fmt.Fprintln(stderr, "usage: gompher build [options] <file.go>")
 		fmt.Fprintln(stderr, "       gompher --version")
+		fmt.Fprintln(stderr, "run 'gompher --help' for the directive reference")
 		return 1
 	}
 
@@ -56,8 +86,7 @@ func runBuild(args []string, stdout, stderr io.Writer) int {
 	fs.BoolVar(&keepTemp, "k", false, "preserve intermediate .go file after compilation (shorthand)")
 
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "GompherMP CLI - Structured parallelism transpiler for Go\nUsage: gompher build [options] <file.go>\n\nOptions:\n")
-		fs.PrintDefaults()
+		fmt.Fprint(fs.Output(), helpText)
 	}
 
 	if err := fs.Parse(args); err != nil {

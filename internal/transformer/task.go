@@ -79,7 +79,7 @@ func transformTask(result *parser.ParseResult, d parser.TaskDirective) error {
 
 	// private(x): var x T - zero-initialized, shadows outer x.
 	for _, v := range pvVars {
-		typeExpr, err := findVarType(result.File, v, d.Pos)
+		typeExpr, err := resolveVarType(result.FileSet, result.File, v, d.Pos)
 		if err != nil {
 			return fmt.Errorf("Task at line %d: %w", d.Line, err)
 		}

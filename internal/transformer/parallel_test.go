@@ -147,6 +147,141 @@ func main() {
 	}
 }
 
+// TestTransform_Parallel_Private verifies that a private(x) clause prepends a
+// fresh `var x T` declaration inside the closure, giving each goroutine its own
+// zero-valued copy that shadows the outer variable.
+func TestTransform_Parallel_Private(t *testing.T) {
+	src := `package main
+
+func main() {
+	var local int
+	//gompher parallel private(local)
+	{
+		local = 1
+		_ = local
+	}
+	_ = local
+}
+`
+	got := runTransform(t, src)
+
+	if !strings.Contains(got, "runtime.Parallel(func(threadID int) {") {
+		t.Fatalf("expected Parallel closure, got:\n%s", got)
+	}
+	if !strings.Contains(got, "var local int") {
+		t.Errorf("expected private declaration `var local int` inside closure, got:\n%s", got)
+	}
+	// The private decl must be inside the closure, after the Parallel call opens.
+	pIdx := strings.Index(got, "runtime.Parallel")
+	dIdx := strings.LastIndex(got, "var local int")
+	if dIdx < pIdx {
+		t.Errorf("expected private decl inside the closure, got:\n%s", got)
+	}
+}
+
+// TestTransform_Parallel_Firstprivate verifies that firstprivate(x) snapshots
+// the outer value before the call (_fp_x := x) and shadows it inside the
+// closure (x := _fp_x), so each goroutine starts from the captured value.
+func TestTransform_Parallel_Firstprivate(t *testing.T) {
+	src := `package main
+
+func main() {
+	var base int = 10
+	//gompher parallel firstprivate(base)
+	{
+		_ = base
+	}
+	_ = base
+}
+`
+	got := runTransform(t, src)
+
+	if !strings.Contains(got, "_fp_base := base") {
+		t.Errorf("expected firstprivate capture `_fp_base := base` before the call, got:\n%s", got)
+	}
+	if !strings.Contains(got, "base := _fp_base") {
+		t.Errorf("expected firstprivate shadow `base := _fp_base` inside the closure, got:\n%s", got)
+	}
+	// Capture must come before the Parallel call; shadow must come after.
+	capIdx := strings.Index(got, "_fp_base := base")
+	parIdx := strings.Index(got, "runtime.Parallel")
+	shIdx := strings.Index(got, "base := _fp_base")
+	if !(capIdx < parIdx && parIdx < shIdx) {
+		t.Errorf("expected capture before call and shadow inside; got cap=%d par=%d sh=%d\n%s", capIdx, parIdx, shIdx, got)
+	}
+}
+
+// TestTransform_Parallel_Shared verifies that shared(x) is a no-op: no
+// private declaration or firstprivate capture is emitted, since Go closures
+// already share captured variables by reference.
+func TestTransform_Parallel_Shared(t *testing.T) {
+	src := `package main
+
+func main() {
+	var total int
+	//gompher parallel shared(total)
+	{
+		total = 1
+		_ = total
+	}
+	_ = total
+}
+`
+	got := runTransform(t, src)
+
+	if strings.Contains(got, "var total int\n\t\tvar") || strings.Contains(got, "_fp_total") {
+		t.Errorf("expected shared(total) to emit no extra declarations, got:\n%s", got)
+	}
+	if !strings.Contains(got, "runtime.Parallel(func(threadID int) {") {
+		t.Errorf("expected a plain Parallel closure, got:\n%s", got)
+	}
+}
+
+// TestTransform_Parallel_PrivateShortDecl verifies that private(x) on a
+// variable declared with := resolves its type via go/types and emits the right
+// `var x T` declaration, without requiring an explicit type annotation.
+func TestTransform_Parallel_PrivateShortDecl(t *testing.T) {
+	src := `package main
+
+func main() {
+	x := 5
+	//gompher parallel private(x)
+	{
+		x = 1
+		_ = x
+	}
+	_ = x
+}
+`
+	got := runTransform(t, src)
+	if !strings.Contains(got, "var x int") {
+		t.Errorf("expected private(x) on `x := 5` to resolve to `var x int`, got:\n%s", got)
+	}
+}
+
+// TestTransform_Parallel_PrivateUndeclared verifies that private(x) on a
+// variable that is not declared before the directive produces a descriptive
+// error rather than emitting an untyped declaration.
+func TestTransform_Parallel_PrivateUndeclared(t *testing.T) {
+	parsed, err := parser.Parse("package main\n\nfunc main() {}\n")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	// Construct a parallel directive that claims private(ghost) where ghost is
+	// never declared, so go/types cannot type it.
+	parsed.Nodes = append(parsed.Nodes, parser.AnnotatedNode{
+		Directive: parser.ParallelDirective{
+			Clauses: []parser.Clause{parser.PrivateClause{Vars: []string{"ghost"}}},
+			Node:    &ast.BlockStmt{},
+		},
+	})
+
+	_, err = Transform(parsed)
+	if err == nil || !strings.Contains(err.Error(), "private(ghost)") {
+		t.Errorf("expected private type-resolution error for undeclared var, got: %v", err)
+	}
+}
+
 // TestTransformParallel_WrongNodeType verifies the defensive error path:
 // passing a non-BlockStmt Node yields a descriptive error rather than a
 // panic, consistent with the other directive handlers.
