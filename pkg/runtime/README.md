@@ -83,7 +83,7 @@ in a `Parallel`.
 | Function | Purpose |
 |---|---|
 | `Critical(name string, body func())` | Mutual exclusion around `body`. An empty `name` uses a global anonymous lock; a non-empty name uses a per-name lock so different names can run in parallel. |
-| `Single(body func())` | Executes `body` on exactly one goroutine of the team (elected by an atomic CAS on the team token) while the others skip it, then synchronizes at the implicit barrier. Standalone it simply runs the body. |
+| `Single(body func())` | Executes `body` on exactly one goroutine of the team (elected by an atomic compare-and-swap — CAS: an atomic operation that updates a value only if it still equals an expected one — on the team token) while the others skip it, then synchronizes at the implicit barrier. Standalone it simply runs the body. |
 | `Master(threadID int, body func())` | Executes `body` only when called from the master goroutine (`threadID == 0`). No implicit barrier (non-master goroutines continue immediately). |
 | `Barrier()` | Synchronization point for the current team. All goroutines in the team must reach the call before any can proceed. No-op outside a parallel region. |
 
