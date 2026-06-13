@@ -261,7 +261,7 @@ func TestTransformTask_WrongNodeType(t *testing.T) {
 		t.Fatalf("parse: %v", err)
 	}
 
-	// depend path requires BlockStmt — use a depend clause to force that branch
+	// depend path requires BlockStmt - use a depend clause to force that branch
 	bogus := parser.TaskDirective{
 		Clauses: []parser.Clause{
 			parser.DependClause{DepType: "in", Vars: []string{"x"}},
@@ -334,7 +334,7 @@ func TestTransformTask_NoDependWrongNodeType(t *testing.T) {
 	}
 
 	bogus := parser.TaskDirective{
-		Node: &ast.ExprStmt{}, // no Clauses — routes through transformBlockDirective
+		Node: &ast.ExprStmt{}, // no Clauses - routes through transformBlockDirective
 	}
 
 	err = transformTask(parsed, bogus)
@@ -348,7 +348,7 @@ func TestTransformTask_NoDependWrongNodeType(t *testing.T) {
 
 // TestTransform_Task_DependArgumentOrder verifies that ins, outs, and inouts
 // appear in that order as arguments to runtime.TaskWithDepend. The runtime
-// relies on positional semantics — a swap would silently corrupt dependency
+// relies on positional semantics - a swap would silently corrupt dependency
 // tracking.
 func TestTransform_Task_DependArgumentOrder(t *testing.T) {
 	src := `package main
@@ -658,9 +658,12 @@ func main() {
 	}
 }
 
-// TestTransform_Task_Private_ShortDecl_Error verifies that private(x) on a
-// variable declared with := (no explicit type) returns a clear error.
-func TestTransform_Task_Private_ShortDecl_Error(t *testing.T) {
+// TestTransform_Task_Private_ShortDecl verifies that private(x) on a variable
+// declared with := (no explicit type) resolves correctly: go/types infers the
+// type, so the closure gets a `var x int` declaration. (This used to be an
+// error under the syntactic type lookup; the go/types resolver removed that
+// limitation.)
+func TestTransform_Task_Private_ShortDecl(t *testing.T) {
 	src := `package main
 
 func main() {
@@ -671,22 +674,15 @@ func main() {
 	}
 }
 `
-	parsed, err := parser.Parse(src)
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
+	got := runTransform(t, src)
 
-	_, err = Transform(parsed)
-	if err == nil {
-		t.Fatal("expected error for short-decl variable with private clause")
-	}
-	if !strings.Contains(err.Error(), "explicit") {
-		t.Errorf("expected error to mention 'explicit', got: %v", err)
+	if !strings.Contains(got, "var x int") {
+		t.Errorf("expected private(x) to resolve to `var x int`, got:\n%s", got)
 	}
 }
 
 // TestTransform_Task_Shared_Ignored verifies that shared(x) produces the same
-// output as a plain //gompher task — it is silently ignored because Go closures
+// output as a plain //gompher task - it is silently ignored because Go closures
 // already share variables by reference.
 func TestTransform_Task_Shared_Ignored(t *testing.T) {
 	withShared := `package main

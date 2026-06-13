@@ -73,7 +73,7 @@ func claimDeps(done chan struct{}, ins, outs, inouts []uintptr) []chan struct{} 
 		e.readersDone = nil
 	}
 
-	// inout: same as out — serialises with all prior readers and writers.
+	// inout: same as out - serialises with all prior readers and writers.
 	for _, addr := range inouts {
 		e := getOrCreateEntry(addr)
 		if e.writerDone != nil && !isClosed(e.writerDone) {
@@ -100,7 +100,7 @@ func resetDeps() {
 }
 
 // TaskWithDepend submits body as a task with data-flow dependency ordering.
-// ins, outs, inouts are variable addresses used as dependency tokens — they are
+// ins, outs, inouts are variable addresses used as dependency tokens - they are
 // never dereferenced; the address is a correlation key only.
 // The task is submitted immediately; dependency waiting happens inside the goroutine.
 func TaskWithDepend(body func(), ins, outs, inouts []uintptr) {

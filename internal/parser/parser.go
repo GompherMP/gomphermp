@@ -59,6 +59,9 @@ func setNode(dir Directive, node ast.Node) Directive {
 	case ParallelForDirective:
 		d.Node = node
 		return d
+	case ParallelSectionsDirective:
+		d.Node = node
+		return d
 	case SectionsDirective:
 		d.Node = node
 		return d
@@ -188,7 +191,7 @@ func validateNodeType(dir Directive, node ast.Node) error {
 		default:
 			return fmt.Errorf("directive %q requires an expression or assignment statement, got %T", dir.directiveKind(), node)
 		}
-	case DirParallel, DirSections, DirSection, DirSingle, DirMaster, DirCritical, DirTask, DirTaskgroup:
+	case DirParallel, DirSections, DirParallelSections, DirSection, DirSingle, DirMaster, DirCritical, DirTask, DirTaskgroup:
 		if _, ok := node.(*ast.BlockStmt); !ok {
 			return fmt.Errorf("directive %q requires a block statement, got %T", dir.directiveKind(), node)
 		}
@@ -201,7 +204,10 @@ func validateNodeType(dir Directive, node ast.Node) error {
 func validateSectionContext(result []AnnotatedNode) error {
 	var sectionsNodes []ast.Node
 	for _, n := range result {
-		if d, ok := n.Directive.(SectionsDirective); ok {
+		switch d := n.Directive.(type) {
+		case SectionsDirective:
+			sectionsNodes = append(sectionsNodes, d.Node)
+		case ParallelSectionsDirective:
 			sectionsNodes = append(sectionsNodes, d.Node)
 		}
 	}
@@ -302,6 +308,16 @@ func buildDirective(kind DirectiveKind, rest string, srcPos pos) (Directive, err
 		}
 		return SectionsDirective{Clauses: clauses, pos: srcPos}, nil
 
+	case DirParallelSections:
+		clauses, err := extractClauses(rest)
+		if err != nil {
+			return nil, err
+		}
+		if err := validateClauses(kind, clauses); err != nil {
+			return nil, err
+		}
+		return ParallelSectionsDirective{Clauses: clauses, pos: srcPos}, nil
+
 	case DirSection:
 		if rest != "" {
 			return nil, fmt.Errorf("directive %q accepts no clauses", kind)
@@ -395,6 +411,7 @@ func buildDirective(kind DirectiveKind, rest string, srcPos pos) (Directive, err
 func extractKind(text string) (DirectiveKind, string, error) {
 	kinds := []DirectiveKind{
 		DirParallelFor,
+		DirParallelSections,
 		DirParallel,
 		DirFor,
 		DirSections,
@@ -432,13 +449,14 @@ func extractKind(text string) (DirectiveKind, string, error) {
 // validClauses defines the strict compliance mapping for OpenMP directives.
 // Contextless or synchronization directives accept no clauses and are omitted here.
 var validClauses = map[DirectiveKind][]ClauseKind{
-	DirParallel:    {ClausePrivate, ClauseFirstPrivate, ClauseShared},
-	DirFor:         {ClausePrivate, ClauseFirstPrivate, ClauseSchedule},
-	DirParallelFor: {ClausePrivate, ClauseFirstPrivate, ClauseLastPrivate, ClauseShared, ClauseReduction, ClauseSchedule},
-	DirSections:    {ClausePrivate, ClauseFirstPrivate, ClauseLastPrivate, ClauseReduction},
-	DirSingle:      {ClausePrivate, ClauseFirstPrivate},
-	DirTask:        {ClausePrivate, ClauseFirstPrivate, ClauseShared, ClauseReduction, ClauseDepend},
-	DirTaskloop:    {ClausePrivate, ClauseFirstPrivate, ClauseGrainsize},
+	DirParallel:         {ClausePrivate, ClauseFirstPrivate, ClauseShared},
+	DirFor:              {ClausePrivate, ClauseFirstPrivate, ClauseLastPrivate, ClauseReduction, ClauseSchedule},
+	DirParallelFor:      {ClausePrivate, ClauseFirstPrivate, ClauseLastPrivate, ClauseShared, ClauseReduction, ClauseSchedule},
+	DirSections:         {ClausePrivate, ClauseFirstPrivate, ClauseLastPrivate, ClauseReduction},
+	DirParallelSections: {ClausePrivate, ClauseFirstPrivate, ClauseLastPrivate, ClauseReduction, ClauseShared},
+	DirSingle:           {ClausePrivate, ClauseFirstPrivate},
+	DirTask:             {ClausePrivate, ClauseFirstPrivate, ClauseShared, ClauseDepend},
+	DirTaskloop:         {ClausePrivate, ClauseFirstPrivate, ClauseGrainsize},
 }
 
 // validateClauses cross-references extracted clauses against the validClauses map,

@@ -26,7 +26,7 @@ Para ofrecer un mayor control sobre el proceso de transpilación y compilación,
     [`--output`], [`-o`], [Especifica el nombre y la ruta del binario ejecutable resultante.],
     [`--verbose`], [`-v`], [Activa el modo detallado. Imprime en la terminal las fases del pipeline y las directivas detectadas en el AST.],
     [`--keep-temp`], [`-k`], [Conserva los archivos fuente `.go` intermedios generados tras la inyección del AST. Útil para depuración.],
-    [`--help`], [`-h`], [Despliega el menú de ayuda con la descripción de comandos y sintaxis de las directivas.],
+    [`--help`], [`-h`], [Despliega el menú de ayuda con la descripción de comandos y opciones. Siguiendo la convención de OpenMP, la sintaxis de las directivas no forma parte de la ayuda de la herramienta: reside en la referencia de directivas (la especificación), no en `--help`.],
     [`--version`], [], [Muestra la versión actual de la herramienta GompherMP.]
   ),
   caption: [Banderas y opciones soportadas por el comando build]
@@ -58,12 +58,22 @@ Ideal para analizar qué directivas detectó el AST y conservar el código Go in
 
 *3. Consulta del Menú de Ayuda:*
 
+La ayuda muestra el uso y las banderas disponibles:
+
 #figure(
   ```text
-  $ gompher build --help
-  GompherMP CLI - Transpilador de paralelismo estructurado para Go
-  Uso: gompher build [opciones] <archivo.go>
-  ...
+  $ gompher --help
+  GompherMP - Structured parallelism transpiler for Go
+
+  Usage:
+    gompher build [options] <file.go>    transpile the directives and compile to a binary
+    gompher --version                    print the version
+
+  Options:
+    -o, --output <path>    output binary path (default: ./<file>)
+    -v, --verbose          print the pipeline phases and detected directives
+    -k, --keep-temp        keep the generated intermediate .go file
+    -h, --help             show this help
   ```,
   caption: [Salida estándar del comando --help]
 )

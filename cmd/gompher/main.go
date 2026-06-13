@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,23 +16,62 @@ import (
 
 const version = "0.1.0"
 
+// helpText is the --help output: usage and command-line flags.
+const helpText = `GompherMP - Structured parallelism transpiler for Go
+
+Usage:
+  gompher build [options] <file.go>    transpile the directives and compile to a binary
+  gompher --version                    print the version
+
+Options:
+  -o, --output <path>    output binary path (default: ./<file>)
+  -v, --verbose          print the pipeline phases and detected directives
+  -k, --keep-temp        keep the generated intermediate .go file
+  -h, --help             show this help
+`
+
 func main() {
-	if len(os.Args) == 2 && os.Args[1] == "--version" {
-		fmt.Println("gompher version", version)
-		return
-	}
-
-	if len(os.Args) < 2 || os.Args[1] != "build" {
-		fmt.Fprintln(os.Stderr, "usage: gompher build [options] <file.go>")
-		fmt.Fprintln(os.Stderr, "       gompher --version")
-		os.Exit(1)
-	}
-
-	runBuild(os.Args[2:])
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
 
-func runBuild(args []string) {
-	fs := flag.NewFlagSet("build", flag.ExitOnError)
+// hasArg reports whether any element of args equals flag.
+func hasArg(args []string, flag string) bool {
+	for _, a := range args {
+		if a == flag {
+			return true
+		}
+	}
+	return false
+}
+
+// run is the testable entry point of the CLI. It returns a process exit code
+// and writes all user-facing output to the provided writers rather than the
+// process streams, so tests can drive it with captured buffers and assert on
+// both the result code and the emitted text.
+func run(args []string, stdout, stderr io.Writer) int {
+	if hasArg(args, "--help") || hasArg(args, "-h") {
+		fmt.Fprint(stdout, helpText)
+		return 0
+	}
+
+	if len(args) == 1 && args[0] == "--version" {
+		fmt.Fprintln(stdout, "gompher version", version)
+		return 0
+	}
+
+	if len(args) < 1 || args[0] != "build" {
+		fmt.Fprintln(stderr, "usage: gompher build [options] <file.go>")
+		fmt.Fprintln(stderr, "       gompher --version")
+		fmt.Fprintln(stderr, "run 'gompher --help' for the directive reference")
+		return 1
+	}
+
+	return runBuild(args[1:], stdout, stderr)
+}
+
+func runBuild(args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("build", flag.ContinueOnError)
+	fs.SetOutput(stderr)
 
 	var outputFlag string
 	fs.StringVar(&outputFlag, "output", "", "output binary `path`")
@@ -46,78 +86,84 @@ func runBuild(args []string) {
 	fs.BoolVar(&keepTemp, "k", false, "preserve intermediate .go file after compilation (shorthand)")
 
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "GompherMP CLI - Structured parallelism transpiler for Go\nUsage: gompher build [options] <file.go>\n\nOptions:\n")
-		fs.PrintDefaults()
+		fmt.Fprint(fs.Output(), helpText)
 	}
 
 	if err := fs.Parse(args); err != nil {
-		os.Exit(1)
+		return 1
 	}
 
 	if fs.NArg() != 1 {
 		fs.Usage()
-		os.Exit(1)
+		return 1
 	}
 
 	inputPath := fs.Arg(0)
 
 	if !strings.HasSuffix(inputPath, ".go") {
-		fmt.Fprintln(os.Stderr, "[Error] Input file must have a .go extension.")
-		os.Exit(1)
+		fmt.Fprintln(stderr, "[Error] Input file must have a .go extension.")
+		return 1
 	}
 
 	absInput, err := filepath.Abs(inputPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[Error] Cannot resolve path %s: %v\n", inputPath, err)
-		os.Exit(1)
+		fmt.Fprintf(stderr, "[Error] Cannot resolve path %s: %v\n", inputPath, err)
+		return 1
 	}
 
 	if _, err := os.Stat(absInput); err != nil {
-		fmt.Fprintf(os.Stderr, "[Error] Cannot access %s: %v\n", inputPath, err)
-		os.Exit(1)
+		fmt.Fprintf(stderr, "[Error] Cannot access %s: %v\n", inputPath, err)
+		return 1
 	}
 
 	// --- Phase 1: Read source ---
 
 	src, err := os.ReadFile(absInput)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[Error] Cannot read %s: %v\n", inputPath, err)
-		os.Exit(1)
+		fmt.Fprintf(stderr, "[Error] Cannot read %s: %v\n", inputPath, err)
+		return 1
 	}
 
 	// --- Phase 2: Parse ---
 
 	if verbose {
-		fmt.Printf("[INFO] Parsing AST of %s...\n", filepath.Base(inputPath))
+		fmt.Fprintf(stdout, "[INFO] Parsing AST of %s...\n", filepath.Base(inputPath))
 	}
 
 	parsed, err := parser.Parse(string(src))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[Error] Parse failed in %s: %v\n", inputPath, err)
-		os.Exit(1)
+		fmt.Fprintf(stderr, "[Error] Parse failed in %s: %v\n", inputPath, err)
+		return 1
 	}
 
 	if verbose {
 		for _, node := range parsed.Nodes {
 			kind, line := directiveInfo(node.Directive)
-			fmt.Printf("[INFO] Directive '%s' detected at line %d.\n", kind, line)
+			fmt.Fprintf(stdout, "[INFO] Directive '%s' detected at line %d.\n", kind, line)
 		}
 	}
 
-	// --- Phase 3: Transform ---
+	// --- Phase 3: Validate contextual rules ---
+
+	if err := transformer.Validate(parsed); err != nil {
+		fmt.Fprintf(stderr, "[Error] Validation failed in %s: %v\n", inputPath, err)
+		return 1
+	}
+
+	// --- Phase 4: Transform ---
 
 	transformed, err := transformer.Transform(parsed)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[Error] Transform failed in %s: %v\n", inputPath, err)
-		os.Exit(1)
+		fmt.Fprintf(stderr, "[Error] Transform failed in %s: %v\n", inputPath, err)
+		return 1
 	}
 
 	// --- Phase 4: Print to temp file ---
 
 	tf, err := os.CreateTemp(filepath.Dir(absInput), "gompher_*.go")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[Error] Cannot create temp file: %v\n", err)
-		os.Exit(1)
+		fmt.Fprintf(stderr, "[Error] Cannot create temp file: %v\n", err)
+		return 1
 	}
 	tempPath := tf.Name()
 	tf.Close()
@@ -127,12 +173,12 @@ func runBuild(args []string) {
 	}
 
 	if verbose {
-		fmt.Println("[INFO] Generating temporary source file...")
+		fmt.Fprintln(stdout, "[INFO] Generating temporary source file...")
 	}
 
 	if err := printer.Print(transformed, tempPath); err != nil {
-		fmt.Fprintf(os.Stderr, "[Error] Cannot write temp file: %v\n", err)
-		os.Exit(1)
+		fmt.Fprintf(stderr, "[Error] Cannot write temp file: %v\n", err)
+		return 1
 	}
 
 	// --- Phase 5: Compile ---
@@ -144,26 +190,28 @@ func runBuild(args []string) {
 	}
 
 	if verbose {
-		fmt.Println("[INFO] Running go build...")
+		fmt.Fprintln(stdout, "[INFO] Running go build...")
 	}
 
 	absOut, err := filepath.Abs(outBin)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[Error] Cannot resolve output path: %v\n", err)
-		os.Exit(1)
+		fmt.Fprintf(stderr, "[Error] Cannot resolve output path: %v\n", err)
+		return 1
 	}
 
 	cmd := exec.Command("go", "build", "-o", absOut, tempPath)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
 	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "[Error] Compilation failed: %v\n", err)
-		os.Exit(1)
+		fmt.Fprintf(stderr, "[Error] Compilation failed: %v\n", err)
+		return 1
 	}
 
 	if verbose {
-		fmt.Printf("[SUCCESS] Binary generated: %s\n", outBin)
+		fmt.Fprintf(stdout, "[SUCCESS] Binary generated: %s\n", outBin)
 	}
+
+	return 0
 }
 
 // directiveInfo extracts the human-readable directive name and source line from

@@ -21,7 +21,7 @@ El módulo reside en el paquete público `pkg/runtime/` del repositorio. El sigu
 
 == Primitivas públicas
 
-El módulo expone cinco funciones que el motor de transformación invoca para traducir las directivas del programa original, complementadas por tres funciones de configuración del pool:
+El módulo expone nueve funciones de reparto de trabajo que el motor de transformación invoca para traducir las directivas del programa original, complementadas por tres funciones de configuración del pool:
 
 #figure(
   table(
@@ -29,10 +29,14 @@ El módulo expone cinco funciones que el motor de transformación invoca para tr
     align: (left, left),
     [*Primitiva*], [*Propósito*],
     [`Parallel`],          [Despacha al pool tantos jobs como workers tenga el pool, cada uno asociado a un team context compartido. Cada worker recibe su identificador de hilo y ejecuta el cuerpo de la región paralela. Aplica una barrera implícita al finalizar. Cuando se invoca desde dentro de una región paralela ya activa, serializa la ejecución en un equipo virtual de tamaño uno (paralelismo anidado deshabilitado, consistente con el comportamiento por defecto de OpenMP).],
-    [`For`],               [Reparte un espacio de iteración entre los workers del pool mediante reparto estático en chunks contiguos.],
+    [`For`],               [Construcción de reparto de trabajo: cada worker del equipo ejecuta su chunk estático contiguo del espacio `[0, N)`. Termina en la barrera implícita del equipo.],
     [`ParallelFor`],       [Combinación de `Parallel` y `For` en una única invocación para el caso compuesto `parallel for`.],
-    [`ForDynamic`],        [Reparte iteraciones mediante un contador atómico compartido que entrega chunks bajo demanda. Implementa la política `schedule(dynamic, chunkSize)`.],
-    [`Sections`],          [Distribuye dinámicamente un conjunto de bloques de código independientes entre los workers del pool.],
+    [`ForDynamic`],        [Reparto de trabajo dinámico: las goroutines reclaman chunks bajo demanda de un contador atómico compartido (`workCounter`). Implementa `schedule(dynamic, chunkSize)`.],
+    [`ParallelForDynamic`],[Combinación de `Parallel` y `ForDynamic` para el caso compuesto con planificación dinámica.],
+    [`ForStaticChunked`],  [Reparto de trabajo estático con chunk explícito: trozos fijos de `chunkSize` repartidos de forma cíclica entre el equipo (block-cyclic). Implementa `schedule(static, chunkSize)`.],
+    [`ParallelForStaticChunked`], [Combinación de `Parallel` y `ForStaticChunked` para el caso compuesto block-cyclic.],
+    [`Sections`],          [Construcción de reparto de trabajo: el equipo reclama dinámicamente del cursor compartido los bloques independientes, ejecutando cada uno exactamente una vez. Termina en la barrera implícita.],
+    [`ParallelSections`],  [Combinación de `Parallel` y `Sections` para el caso compuesto `parallel sections`.],
     [`PoolSize`],          [Retorna el tamaño del pool activo.],
     [`SetPoolSize`],       [Reemplaza el pool activo por uno nuevo del tamaño solicitado. Valores no positivos se acotan al mínimo seguro de uno.],
     [`CurrentTeamSize`],   [Retorna el tamaño del equipo al que pertenece la goroutine invocante, o uno si no está dentro de ninguna región paralela.],
@@ -46,7 +50,9 @@ Al inicializarse el paquete (`init()` en `pool.go`), el runtime pre-instancia un
 
 El tamaño del pool se controla mediante la función `SetPoolSize(n)`, que crea un nuevo pool de tamaño `n` y libera los workers del pool anterior cerrando el canal de jobs. Valores no positivos son acotados al mínimo seguro de uno, garantizando que el runtime mantenga un estado operativo incluso ante configuraciones degeneradas.
 
-Cada región paralela instancia un team context, una estructura que asocia los workers participantes mediante un grupo de espera (`sync.WaitGroup`) que sostiene la barrera implícita y permite identificar al equipo en operaciones posteriores como `Barrier()`. Cuando un worker del pool toma un job, se registra en el team context asociado al job por su identificador de goroutine en un mapa global protegido por un `sync.RWMutex`, habilitando el lookup eficiente desde primitivas de sincronización ajenas al módulo. Al finalizar la ejecución del cuerpo del job, el worker se desregistra y queda disponible para participar en regiones paralelas posteriores con team contexts distintos.
+Cada región paralela instancia un team context que sostiene el estado compartido por todos los workers participantes: una barrera cíclica reutilizable (`cyclicBarrier`, ver módulo de sincronización) que respalda las barreras implícitas de cada construcción de reparto, el tamaño del equipo, un token de elección para `Single` (`singleFlag`) y un cursor de trabajo compartido (`workCounter`) que usan las construcciones dinámicas y `Sections`. Como el equipo es persistente y se comparte entre varias construcciones de reparto dentro de la misma región, estas estructuras son reutilizables: la barrera se reinicia generación a generación y los contadores se restablecen al cerrar cada construcción. La finalización de la región completa la sostiene `Parallel` mediante un `sync.WaitGroup` que espera a que todos los workers retornen.
+
+Cuando un worker del pool toma un job, se registra en el team context asociado al job por su identificador de goroutine en un mapa global protegido por un `sync.RWMutex`, habilitando el lookup eficiente desde primitivas de sincronización ajenas al módulo. Al finalizar la ejecución del cuerpo del job, el worker se desregistra y queda disponible para participar en regiones paralelas posteriores con team contexts distintos.
 
 == Metodología de pruebas
 

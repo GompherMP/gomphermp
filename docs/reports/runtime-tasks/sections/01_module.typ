@@ -30,7 +30,7 @@ El módulo expone cinco funciones que el motor de transformación invoca para tr
     [*Primitiva*], [*Propósito*],
     [`Task`],            [Despacha `body` como una goroutine asíncrona. Si la goroutine invocante pertenece a una tarea activa, la nueva tarea queda registrada como hija de ésta en el árbol de tareas. Retorna inmediatamente.],
     [`Taskwait`],        [Bloquea a la goroutine invocante hasta que todos los hijos directos de la tarea actual hayan terminado. No espera a los descendientes más profundos. Es un no-op si se invoca fuera de cualquier contexto de tarea.],
-    [`Taskgroup`],       [Ejecuta `body` de forma síncrona en el hilo invocante — no crea una tarea hija ni se registra en el árbol de tareas del contexto externo. Corresponde a la semántica del estándar OpenMP, donde `taskgroup` es un constructo, no una tarea. Al finalizar `body`, bloquea hasta que todos los descendientes generados dentro del grupo, a cualquier nivel de profundidad, hayan terminado. Proporciona la barrera profunda que `Taskwait` no garantiza.],
+    [`Taskgroup`],       [Ejecuta `body` de forma síncrona en el hilo invocante - no crea una tarea hija ni se registra en el árbol de tareas del contexto externo. Corresponde a la semántica del estándar OpenMP, donde `taskgroup` es un constructo, no una tarea. Al finalizar `body`, bloquea hasta que todos los descendientes generados dentro del grupo, a cualquier nivel de profundidad, hayan terminado. Proporciona la barrera profunda que `Taskwait` no garantiza.],
     [`Taskloop`],        [Distribuye el rango `[0, iterations)` como tareas independientes, una por cada bloque de `grainsize` iteraciones. `grainsize` se acota a 1 si recibe un valor no positivo. Es un no-op para `iterations <= 0`.],
     [`TaskWithDepend`],  [Despacha `body` como una tarea con ordenamiento por dependencias de datos. `ins`, `outs` e `inouts` son direcciones de variables empleadas como tokens de correlación; nunca se desreferencian. La tarea se registra inmediatamente en el árbol de tareas y la espera efectiva de sus predecesores ocurre dentro de la goroutine antes de ejecutar `body`.],
   ),
@@ -55,7 +55,7 @@ La función `claimDeps` adquiere el mutex global, calcula el conjunto de señale
 
 - *`in` (lectura):* espera al escritor previo si existe; se registra como lector activo para que futuros escritores lo esperen.
 - *`out` (escritura):* espera al escritor previo y a todos los lectores activos; reemplaza la entrada como nuevo escritor y limpia la lista de lectores.
-- *`inout` (lectura-escritura):* idéntico a `out` — serializa con todos los predecesores y se convierte en el nuevo escritor exclusivo.
+- *`inout` (lectura-escritura):* idéntico a `out` - serializa con todos los predecesores y se convierte en el nuevo escritor exclusivo.
 
 La espera efectiva sobre las señales recolectadas ocurre fuera del lock, dentro de la goroutine de la tarea, para no bloquear el ciclo de despacho del hilo que invoca `TaskWithDepend`.
 

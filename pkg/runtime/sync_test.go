@@ -172,6 +172,58 @@ func TestSingle_ExecutesMultipleTimes(t *testing.T) {
 	}
 }
 
+// TestSingle_RunsOnceAcrossTeam verifies the core worksharing semantics: when
+// every goroutine of a parallel team calls Single, the body executes exactly
+// once, not once per goroutine.
+func TestSingle_RunsOnceAcrossTeam(t *testing.T) {
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
+	SetPoolSize(4)
+
+	var executions int64
+	var afterSingle int64
+
+	Parallel(func(threadID int) {
+		Single(func() {
+			atomic.AddInt64(&executions, 1)
+		})
+		// Every goroutine continues past the single's implicit barrier.
+		atomic.AddInt64(&afterSingle, 1)
+	})
+
+	if executions != 1 {
+		t.Errorf("expected single body to run exactly once, ran %d times", executions)
+	}
+	if afterSingle != int64(PoolSize()) {
+		t.Errorf("expected all %d goroutines past the single, got %d", PoolSize(), afterSingle)
+	}
+}
+
+// TestSingle_MultipleSinglesInOneRegion verifies that several single blocks can
+// follow one another within a single parallel region, each running exactly
+// once. This exercises the flag reset between singles (the reason Single uses
+// two barriers).
+func TestSingle_MultipleSinglesInOneRegion(t *testing.T) {
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
+	SetPoolSize(4)
+
+	const singles = 5
+	var total int64
+
+	Parallel(func(threadID int) {
+		for s := 0; s < singles; s++ {
+			Single(func() {
+				atomic.AddInt64(&total, 1)
+			})
+		}
+	})
+
+	if total != singles {
+		t.Errorf("expected %d single executions across the region, got %d", singles, total)
+	}
+}
+
 // TestMaster_OnlyMasterExecutes verifies only thread 0 executes master block.
 func TestMaster_OnlyMasterExecutes(t *testing.T) {
 	const goroutines = 4
@@ -368,6 +420,41 @@ func TestBarrier_DifferentTeamSizes(t *testing.T) {
 		if counter != int64(size) {
 			t.Errorf("team size %d: expected counter=%d, got %d", size, size, counter)
 		}
+	}
+}
+
+// TestBarrier_Reusable verifies the cyclic barrier can be crossed multiple
+// times within a single parallel region. This is the behavior the OpenMP
+// worksharing model depends on (each for/sections/single ends with its own
+// implicit barrier); the previous one-shot WaitGroup barrier would have
+// panicked on the second crossing.
+func TestBarrier_Reusable(t *testing.T) {
+	originalSize := PoolSize()
+	defer SetPoolSize(originalSize)
+	SetPoolSize(4)
+
+	const rounds = 5
+	var phase int64
+
+	Parallel(func(threadID int) {
+		for r := 0; r < rounds; r++ {
+			// Every goroutine records the current round, then barriers. After
+			// the barrier all goroutines must agree on the round before the
+			// next iteration advances it.
+			atomic.AddInt64(&phase, 1)
+			Barrier()
+
+			// All PoolSize() goroutines must have completed round r before any
+			// proceeds: the running total is a multiple of the team size.
+			if atomic.LoadInt64(&phase)%int64(PoolSize()) != 0 {
+				t.Errorf("round %d: goroutines not synchronized at barrier", r)
+			}
+			Barrier()
+		}
+	})
+
+	if want := int64(rounds * PoolSize()); phase != want {
+		t.Errorf("expected phase=%d after %d reusable rounds, got %d", want, rounds, phase)
 	}
 }
 

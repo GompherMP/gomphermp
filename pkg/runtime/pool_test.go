@@ -58,10 +58,9 @@ func TestCurrentTeamSize_OutsideParallel(t *testing.T) {
 // exercises the pool's team registration mechanism directly via submit().
 func TestCurrentTeamSize_InsideTeam(t *testing.T) {
 	team := &teamContext{
-		barrier: &sync.WaitGroup{},
+		barrier: newCyclicBarrier(4),
 		size:    4,
 	}
-	team.barrier.Add(team.size)
 
 	var seen int64
 	var wg sync.WaitGroup

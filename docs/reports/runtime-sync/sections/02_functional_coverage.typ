@@ -18,9 +18,11 @@ Por brevedad, los nombres de las pruebas en las tablas siguientes omiten el pref
                                             [`Critical_SameNamedLockSerializes`],
                                             [`Critical_AnonymousVsNamed`],
 
-    table.cell(rowspan: 2)[`Single`],
+    table.cell(rowspan: 4)[`Single`],
                                             [`Single_Executes`],
                                             [`Single_ExecutesMultipleTimes`],
+                                            [`Single_RunsOnceAcrossTeam`],
+                                            [`Single_MultipleSinglesInOneRegion`],
 
     table.cell(rowspan: 4)[`Master`],
                                             [`Master_OnlyMasterExecutes`],
@@ -28,10 +30,11 @@ Por brevedad, los nombres de las pruebas en las tablas siguientes omiten el pref
                                             [`Master_CorrectThreadIDCheck`],
                                             [`Master_AllThreadsContinue`],
 
-    table.cell(rowspan: 5)[`Barrier`],
+    table.cell(rowspan: 6)[`Barrier`],
                                             [`Barrier_SynchronizesGoroutines`],
                                             [`Barrier_OutsideParallel`],
                                             [`Barrier_DifferentTeamSizes`],
+                                            [`Barrier_Reusable`],
                                             [`Barrier_NoDeadlock`],
                                             [`Barrier_OrderOfOperations`],
   ),

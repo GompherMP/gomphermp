@@ -490,24 +490,12 @@ func TestParseDirectiveText_TaskShared(t *testing.T) {
 	}
 }
 
-func TestParseDirectiveText_TaskReduction(t *testing.T) {
-	dir, err := parseDirectiveText("task reduction(+:sum)", 0, 1)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	d, ok := dir.(TaskDirective)
-	if !ok {
-		t.Fatalf("expected TaskDirective, got %T", dir)
-	}
-	if len(d.Clauses) != 1 {
-		t.Errorf("expected 1 clause, got %d", len(d.Clauses))
-	}
-	rc, ok := d.Clauses[0].(ReductionClause)
-	if !ok {
-		t.Errorf("expected ReductionClause, got %T", d.Clauses[0])
-	}
-	if rc.Operator != "+" || len(rc.Vars) != 1 || rc.Vars[0] != "sum" {
-		t.Errorf("unexpected reduction clause: %+v", rc)
+// TestParseDirectiveText_TaskRejectsReduction verifies that reduction is not a
+// valid clause on a task.
+func TestParseDirectiveText_TaskRejectsReduction(t *testing.T) {
+	_, err := parseDirectiveText("task reduction(+:sum)", 0, 1)
+	if err == nil {
+		t.Fatal("expected error: task does not accept reduction")
 	}
 }
 
@@ -618,10 +606,22 @@ func TestParseDirectiveText_SectionsRejectsDepend(t *testing.T) {
 	}
 }
 
-func TestParseDirectiveText_ForRejectsReduction(t *testing.T) {
-	_, err := parseDirectiveText("for reduction(+:x)", 0, 1)
+func TestParseDirectiveText_ForAcceptsReductionAndLastprivate(t *testing.T) {
+	// The worksharing for construct accepts reduction and lastprivate,
+	// expanded by the transformer over the surrounding team.
+	if _, err := parseDirectiveText("for reduction(+:x)", 0, 1); err != nil {
+		t.Fatalf("for should accept reduction: %v", err)
+	}
+	if _, err := parseDirectiveText("for lastprivate(x)", 0, 1); err != nil {
+		t.Fatalf("for should accept lastprivate: %v", err)
+	}
+}
+
+func TestParseDirectiveText_ForRejectsShared(t *testing.T) {
+	// shared is a parallel-level clause; the worksharing for does not take it.
+	_, err := parseDirectiveText("for shared(x)", 0, 1)
 	if err == nil {
-		t.Fatal("expected error: for does not accept reduction")
+		t.Fatal("expected error: for does not accept shared")
 	}
 }
 
@@ -629,6 +629,36 @@ func TestParseDirectiveText_SingleRejectsShared(t *testing.T) {
 	_, err := parseDirectiveText("single shared(x)", 0, 1)
 	if err == nil {
 		t.Fatal("expected error: single does not accept shared")
+	}
+}
+
+// TestParseDirectiveText_ParallelSectionsAcceptsShared verifies that the
+// combined parallel sections accepts shared (inherited from the parallel side,
+// like parallel for). In Go it is a no-op, but accepting it keeps the combined
+// constructs consistent and faithful to OpenMP.
+func TestParseDirectiveText_ParallelSectionsAcceptsShared(t *testing.T) {
+	if _, err := parseDirectiveText("parallel sections shared(x)", 0, 1); err != nil {
+		t.Fatalf("parallel sections should accept shared: %v", err)
+	}
+}
+
+// TestParseDirectiveText_SectionsRejectsShared verifies that the bare
+// (worksharing) sections does not take shared - only the combined parallel
+// sections does, mirroring for vs parallel for.
+func TestParseDirectiveText_SectionsRejectsShared(t *testing.T) {
+	if _, err := parseDirectiveText("sections shared(x)", 0, 1); err == nil {
+		t.Fatal("expected error: sections does not accept shared")
+	}
+}
+
+// TestParseDirectiveText_SectionsAcceptsLastprivateReduction verifies the two
+// clauses added to sections (both standard OpenMP sections clauses).
+func TestParseDirectiveText_SectionsAcceptsLastprivateReduction(t *testing.T) {
+	if _, err := parseDirectiveText("sections lastprivate(x)", 0, 1); err != nil {
+		t.Fatalf("sections should accept lastprivate: %v", err)
+	}
+	if _, err := parseDirectiveText("sections reduction(+:s)", 0, 1); err != nil {
+		t.Fatalf("sections should accept reduction: %v", err)
 	}
 }
 
