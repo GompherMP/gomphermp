@@ -133,13 +133,13 @@ func TestTaskgroup_WaitsFullSubtree(t *testing.T) {
 			Task(func() {
 				Task(func() {
 					time.Sleep(20 * time.Millisecond)
-					atomic.StoreInt64(&deepResult, 42)
+					atomic.StoreInt64(&deepResult, 77)
 				})
 			})
 		})
 	})
 
-	if atomic.LoadInt64(&deepResult) != 42 {
+	if atomic.LoadInt64(&deepResult) != 77 {
 		t.Error("Taskgroup returned before deeply nested task completed")
 	}
 }

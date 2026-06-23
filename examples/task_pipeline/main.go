@@ -9,7 +9,7 @@ func main() {
 	{
 		//gompher task depend(out:data)
 		{
-			data = 42
+			data = 25
 		}
 
 		//gompher task depend(inout:data)

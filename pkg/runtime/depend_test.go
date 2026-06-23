@@ -17,7 +17,7 @@ func TestTaskWithDepend_OutBeforeIn(t *testing.T) {
 	Taskgroup(func() {
 		TaskWithDepend(func() {
 			time.Sleep(20 * time.Millisecond)
-			atomic.StoreInt64(&x, 42)
+			atomic.StoreInt64(&x, 99)
 		}, nil, []uintptr{xAddr}, nil) // out:x
 
 		TaskWithDepend(func() {
@@ -25,8 +25,8 @@ func TestTaskWithDepend_OutBeforeIn(t *testing.T) {
 		}, []uintptr{xAddr}, nil, nil) // in:x
 	})
 
-	if result != 42 {
-		t.Errorf("in task read x=%d before out task wrote it; expected 42", result)
+	if result != 99 {
+		t.Errorf("in task read x=%d before out task wrote it; expected 99", result)
 	}
 }
 
@@ -105,7 +105,7 @@ func TestTaskWithDepend_IndependentTokens(t *testing.T) {
 // TestTaskWithDepend_InWithNoWriter verifies that a depend(in:x) task proceeds
 // immediately when no prior depend(out:x) task has claimed that address.
 func TestTaskWithDepend_InWithNoWriter(t *testing.T) {
-	var x int64 = 42
+	var x int64 = 314
 	var result int64
 	xAddr := uintptr(unsafe.Pointer(&x))
 
@@ -115,8 +115,8 @@ func TestTaskWithDepend_InWithNoWriter(t *testing.T) {
 		}, []uintptr{xAddr}, nil, nil) // in:x with no prior out:x
 	})
 
-	if result != 42 {
-		t.Errorf("expected result=42, got %d", result)
+	if result != 314 {
+		t.Errorf("expected result=314, got %d", result)
 	}
 }
 
@@ -131,7 +131,7 @@ func TestTaskWithDepend_MultipleReaders(t *testing.T) {
 	Taskgroup(func() {
 		TaskWithDepend(func() {
 			time.Sleep(20 * time.Millisecond)
-			atomic.StoreInt64(&x, 42)
+			atomic.StoreInt64(&x, 555)
 		}, nil, []uintptr{xAddr}, nil) // out:x
 
 		TaskWithDepend(func() {
@@ -143,11 +143,11 @@ func TestTaskWithDepend_MultipleReaders(t *testing.T) {
 		}, []uintptr{xAddr}, nil, nil) // in:x
 	})
 
-	if r1 != 42 {
-		t.Errorf("reader 1 got x=%d, expected 42", r1)
+	if r1 != 555 {
+		t.Errorf("reader 1 got x=%d, expected 555", r1)
 	}
-	if r2 != 42 {
-		t.Errorf("reader 2 got x=%d, expected 42", r2)
+	if r2 != 555 {
+		t.Errorf("reader 2 got x=%d, expected 555", r2)
 	}
 }
 
@@ -356,16 +356,16 @@ func TestTaskWithDepend_InAfterInout(t *testing.T) {
 	Taskgroup(func() {
 		TaskWithDepend(func() {
 			time.Sleep(20 * time.Millisecond)
-			atomic.StoreInt64(&x, 42)
+			atomic.StoreInt64(&x, 808)
 		}, nil, nil, []uintptr{xAddr}) // inout:x - acts as writer
 
 		TaskWithDepend(func() {
 			atomic.StoreInt64(&result, atomic.LoadInt64(&x))
-		}, []uintptr{xAddr}, nil, nil) // in:x - must see x=42
+		}, []uintptr{xAddr}, nil, nil) // in:x - must see x=808
 	})
 
-	if result != 42 {
-		t.Errorf("expected result=42, got %d", result)
+	if result != 808 {
+		t.Errorf("expected result=808, got %d", result)
 	}
 }
 

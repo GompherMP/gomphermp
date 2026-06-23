@@ -66,14 +66,14 @@ func worker(threadID int) {
 	//gompher master
 	{
 		header := "==="
-		count := 42
+		count := 88
 		fmt.Println(header, count)
 	}
 }
 `
 	got := runTransform(t, src)
 
-	for _, want := range []string{`header := "==="`, "count := 42", "fmt.Println(header, count)"} {
+	for _, want := range []string{`header := "==="`, "count := 88", "fmt.Println(header, count)"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("expected %q preserved, got:\n%s", want, got)
 		}

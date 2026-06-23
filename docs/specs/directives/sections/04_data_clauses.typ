@@ -244,27 +244,26 @@ Realiza una reducción sobre una variable compartida usando un operador. Cada go
 
 *Explicación:* Cada goroutine tiene su propia copia de suma inicializada en 0. Cada una acumula su parte del resultado independientemente. Al finalizar el bucle, todas las copias se suman para producir el resultado final correcto en suma, evitando condiciones de carrera.
 
-=== Caso 2: En Generación de Tareas
+=== Caso 2: En Secciones Paralelas
 
 #figure(
   ```go
   suma := 0
 
-  //gompher parallel
+  //gompher parallel sections reduction(+:suma)
   {
-      //gompher single
-      {
-          for i := 0; i < 10; i++ {
-              //gompher task reduction(+:suma)
-              { suma += calcular(i) }
-          }
-      }
+      //gompher section
+      { suma += calcular(0) }
+      //gompher section
+      { suma += calcular(1) }
+      //gompher section
+      { suma += calcular(2) }
   }
   ```,
-  caption: [Uso de reduction en generación de tareas]
+  caption: [Uso de reduction en secciones paralelas]
 )
 
-*Explicación:* Cada tarea tiene su propia copia de suma. Al finalizar todas las tareas, las copias se combinan con el operador + para producir el resultado final. A diferencia de usar critical, reduction es más eficiente porque evita serializar el acceso a la variable.
+*Explicación:* Cada sección acumula en su propia copia privada de suma, inicializada en 0. Al finalizar todas las secciones, las copias se combinan con el operador + para producir el resultado final, evitando condiciones de carrera sin serializar el acceso con una sección crítica.
 
 
 
