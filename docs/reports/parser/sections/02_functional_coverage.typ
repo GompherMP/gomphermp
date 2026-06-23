@@ -47,10 +47,9 @@ Por brevedad, los nombres de las pruebas en las tablas omiten su prefijo: las pr
                                             [Unitaria],    [`Directive/AtomicWrite`],
                                             [Unitaria],    [`Directive/AtomicDefaultMode`],
 
-    table.cell(rowspan: 4)[`task`],         [Integración], [`Parse/Tasks`],
+    table.cell(rowspan: 3)[`task`],         [Integración], [`Parse/Tasks`],
                                             [Unitaria],    [`Directive/Task`],
                                             [Unitaria],    [`Directive/TaskShared`],
-                                            [Unitaria],    [`Directive/TaskReduction`],
 
     table.cell(rowspan: 2)[`taskwait`],     [Integración], [`Parse/Tasks`],
                                             [Unitaria],    [`Directive/Taskwait`],
@@ -105,7 +104,10 @@ Además de verificar el análisis correcto, la suite prueba que combinaciones in
     align: (left + horizon, left + horizon),
     table.header([*Combinación inválida*], [*Prueba que verifica el rechazo*]),
 
-    [`for` con `reduction`],         [`Directive/ForRejectsReduction`],
+    [`for` con `shared`],            [`Directive/ForRejectsShared`],
+    [`sections` con `shared`],       [`Directive/SectionsRejectsShared`],
+    [`parallel sections` con `depend`], [`Directive/ParallelSectionsRejectsDepend`],
+    [`task` con `reduction`],        [`Directive/TaskRejectsReduction`],
     [`single` con `shared`],         [`Directive/SingleRejectsShared`],
     [`parallel` con `depend`],       [`Directive/ParallelRejectsDepend`],
     [`parallel for` con `depend`],   [`Directive/ParallelForRejectsDepend`],

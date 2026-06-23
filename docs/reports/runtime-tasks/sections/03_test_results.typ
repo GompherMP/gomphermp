@@ -9,15 +9,15 @@ La verificación de la suite se realizó en dos pasos. Primero se ejecutó `go t
     columns: (auto, auto),
     align: (left, right),
     [*Métrica*],                                            [*Valor*],
-    [Total de pruebas ejecutadas (módulo completo)],        [93],
-    [Pruebas del módulo de tareas y dependencias],          [35],
+    [Total de pruebas ejecutadas (módulo completo)],        [111],
+    [Pruebas del módulo de tareas y dependencias],          [36],
     [Pruebas del submódulo de tareas (`task_test.go`)],     [20],
-    [Pruebas del submódulo de dependencias (`depend_test.go`)], [15],
-    [Pruebas exitosas],                                     [93],
+    [Pruebas del submódulo de dependencias (`depend_test.go`)], [16],
+    [Pruebas exitosas],                                     [111],
     [Pruebas fallidas],                                     [0],
-    [Pruebas exitosas con detector de carreras activo],     [93],
+    [Pruebas exitosas con detector de carreras activo],     [111],
     [Cobertura total de instrucciones],                     [100.0%],
-    [Funciones del módulo con cobertura del 100%],          [12 de 12],
+    [Funciones del módulo con cobertura del 100%],          [14 de 14],
   ),
   caption: [Resumen cuantitativo de la ejecución de la suite],
 )
@@ -35,6 +35,7 @@ La verificación de la suite se realizó en dos pasos. Primero se ejecutó `go t
     [`Taskloop`],        [7],   [Verifican que todas las iteraciones se ejecutan exactamente una vez con sus índices correctos, que `iterations <= 0` produce cero ejecuciones, que `grainsize <= 0` se acota a 1, que `grainsize > iterations` produce una sola tarea y que `iterations = 1` produce exactamente una ejecución con índice 0.],
     [`Task` (estrés)],   [1],   [1000 tareas concurrentes, cada una escribiendo en su propia ranura atómica; verifica que ninguna se omite ni se duplica bajo máxima concurrencia.],
     [`TaskWithDepend`],  [15],  [Cubren el ordering `out→in`, la cadena `inout`, dos escritores consecutivos, tokens independientes, lector sin escritor previo, lectores concurrentes (verificación de valor y trampa de deadlock para probar no serialización), `inout` esperando a múltiples lectores, cadena larga de 10 tareas `inout`, dependencias múltiples `in` y `out`, pipeline de tres etapas `out→in→out`, `in` después de `inout`, ausencia de deadlock y estrés de 50 tareas `inout` con incremento no atómico.],
+    [`claimDeps` (poda)], [1], [Verifica que cuando el escritor previo de una variable ya terminó (su canal está cerrado), el registro lo descarta en lugar de devolverlo como señal de espera.],
   ),
   caption: [Distribución de pruebas por primitiva del módulo],
 )
@@ -56,7 +57,9 @@ La verificación de la suite se realizó en dos pasos. Primero se ejecutó `go t
     [`Taskgroup`],           [100.0%],
     [`Taskloop`],            [100.0%],
     [`getOrCreateEntry`],    [100.0%],
+    [`isClosed`],            [100.0%],
     [`claimDeps`],           [100.0%],
+    [`resetDeps`],           [100.0%],
     [`TaskWithDepend`],      [100.0%],
     [*Total del módulo*],    [*100.0%*],
   ),
@@ -70,21 +73,23 @@ A continuación se reproduce la salida del comando `go tool cover -func=runtime_
 #figure(
   ```
 pkg/runtime/depend.go:19:   getOrCreateEntry   100.0%
-pkg/runtime/depend.go:31:   claimDeps          100.0%
-pkg/runtime/depend.go:75:   TaskWithDepend     100.0%
-pkg/runtime/task.go:21:     newHandle          100.0%
-pkg/runtime/task.go:28:     currentTask        100.0%
-pkg/runtime/task.go:36:     registerTask       100.0%
-pkg/runtime/task.go:44:     unregisterTask     100.0%
-pkg/runtime/task.go:53:     waitSubtree        100.0%
-pkg/runtime/task.go:67:     Task               100.0%
-pkg/runtime/task.go:88:     Taskwait           100.0%
-pkg/runtime/task.go:106:    Taskgroup          100.0%
-pkg/runtime/task.go:117:    Taskloop           100.0%
+pkg/runtime/depend.go:29:   isClosed           100.0%
+pkg/runtime/depend.go:42:   claimDeps          100.0%
+pkg/runtime/depend.go:96:   resetDeps          100.0%
+pkg/runtime/depend.go:106:  TaskWithDepend     100.0%
+pkg/runtime/task.go:26:     newHandle          100.0%
+pkg/runtime/task.go:33:     currentTask        100.0%
+pkg/runtime/task.go:41:     registerTask       100.0%
+pkg/runtime/task.go:49:     unregisterTask     100.0%
+pkg/runtime/task.go:58:     waitSubtree        100.0%
+pkg/runtime/task.go:72:     Task               100.0%
+pkg/runtime/task.go:93:     Taskwait           100.0%
+pkg/runtime/task.go:111:    Taskgroup          100.0%
+pkg/runtime/task.go:126:    Taskloop           100.0%
   ```,
   caption: [Salida del comando `go tool cover -func=runtime_cov.out` filtrada al módulo],
 )
 
 = Conclusión
 
-El módulo de tareas y dependencias de datos alcanza una cobertura del 100% de instrucciones ejecutables con 35 pruebas distribuidas entre los dos submódulos. La suite cubre la totalidad de las primitivas públicas (`Task`, `Taskwait`, `Taskgroup`, `Taskloop` y `TaskWithDepend`), sus funciones internas de soporte, sus casos límite y sus garantías de concurrencia. Las pruebas más exigentes incluyen trampas de deadlock que detectarían regresiones semánticas no observables mediante cobertura de líneas: la trampa de `Taskwait_DoesNotWaitGrandchildren` detectaría si `Taskwait` comenzara a esperar a los nietos, y la trampa de `TaskWithDepend_ReadersDoNotBlockEachOther` detectaría si el runtime serializara inadvertidamente tareas `in` entre sí. La prueba de estrés de `TaskWithDepend_StressNoRace` usa incremento no atómico en una cadena de 50 tareas `inout`, verificando la correctitud del ordenamiento por dependencias incluso sin el detector de carreras. La suite completa pasa bajo `go test -race`.
+El módulo de tareas y dependencias de datos alcanza una cobertura del 100% de instrucciones ejecutables con 36 pruebas distribuidas entre los dos submódulos. La suite cubre la totalidad de las primitivas públicas (`Task`, `Taskwait`, `Taskgroup`, `Taskloop` y `TaskWithDepend`), sus funciones internas de soporte, sus casos límite y sus garantías de concurrencia. Las pruebas más exigentes incluyen trampas de deadlock que detectarían regresiones semánticas no observables mediante cobertura de líneas: la trampa de `Taskwait_DoesNotWaitGrandchildren` detectaría si `Taskwait` comenzara a esperar a los nietos, y la trampa de `TaskWithDepend_ReadersDoNotBlockEachOther` detectaría si el runtime serializara inadvertidamente tareas `in` entre sí. La prueba de estrés de `TaskWithDepend_StressNoRace` usa incremento no atómico en una cadena de 50 tareas `inout`, verificando la correctitud del ordenamiento por dependencias incluso sin el detector de carreras. La suite completa pasa bajo `go test -race`.
