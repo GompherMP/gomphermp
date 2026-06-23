@@ -58,6 +58,8 @@ Por brevedad, los nombres de las pruebas en las tablas siguientes omiten el pref
                                             [`TaskWithDepend_InAfterInout`],
                                             [`TaskWithDepend_NoDeadlock`],
                                             [`TaskWithDepend_StressNoRace`],
+
+    [`claimDeps`], [`ClaimDeps_PrunesFinishedWriter`],
   ),
   caption: [Mapeo de primitivas a pruebas que verifican su funcionamiento],
 )

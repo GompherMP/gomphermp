@@ -840,6 +840,58 @@ func main() {
 	}
 }
 
+// TestParse_ParallelSections parses the combined parallel sections construct end
+// to end, exercising the ParallelSectionsDirective branches of setNode and
+// validateSectionContext.
+func TestParse_ParallelSections(t *testing.T) {
+	src := `package main
+
+func main() {
+	//gompher parallel sections
+	{
+		//gompher section
+		{
+			decodificarVideo()
+		}
+
+		//gompher section
+		{
+			decodificarAudio()
+		}
+	}
+}`
+	result, err := Parse(src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 3 {
+		t.Fatalf("expected 3 nodes, got %d", len(result.Nodes))
+	}
+	if _, ok := result.Nodes[0].Directive.(ParallelSectionsDirective); !ok {
+		t.Errorf("node 0: expected ParallelSectionsDirective, got %T", result.Nodes[0].Directive)
+	}
+	if _, ok := result.Nodes[1].Directive.(SectionDirective); !ok {
+		t.Errorf("node 1: expected SectionDirective, got %T", result.Nodes[1].Directive)
+	}
+}
+
+// TestParseDirectiveText_ParallelSectionsRejectsDepend covers the
+// validateClauses error branch of buildDirective for parallel sections (depend
+// is not a valid clause there).
+func TestParseDirectiveText_ParallelSectionsRejectsDepend(t *testing.T) {
+	if _, err := parseDirectiveText("parallel sections depend(in:x)", 0, 1); err == nil {
+		t.Fatal("expected error: parallel sections does not accept depend")
+	}
+}
+
+// TestParseDirectiveText_ParallelSectionsEmptyClause covers the extractClauses
+// error branch of buildDirective for parallel sections (an empty variable list).
+func TestParseDirectiveText_ParallelSectionsEmptyClause(t *testing.T) {
+	if _, err := parseDirectiveText("parallel sections private()", 0, 1); err == nil {
+		t.Fatal("expected error: empty variable list in parallel sections clause")
+	}
+}
+
 func TestParse_Single(t *testing.T) {
 	src := `package main
 
@@ -1260,6 +1312,7 @@ func TestDirectiveKind_AllTypes(t *testing.T) {
 		{ForDirective{}, DirFor},
 		{ParallelForDirective{}, DirParallelFor},
 		{SectionsDirective{}, DirSections},
+		{ParallelSectionsDirective{}, DirParallelSections},
 		{SectionDirective{}, DirSection},
 		{SingleDirective{}, DirSingle},
 		{MasterDirective{}, DirMaster},
@@ -1287,6 +1340,7 @@ func TestDirectiveLine_AllTypes(t *testing.T) {
 		{ForDirective{pos: pos{Line: 2}}, 2},
 		{ParallelForDirective{pos: pos{Line: 3}}, 3},
 		{SectionsDirective{pos: pos{Line: 4}}, 4},
+		{ParallelSectionsDirective{pos: pos{Line: 15}}, 15},
 		{SectionDirective{pos: pos{Line: 5}}, 5},
 		{SingleDirective{pos: pos{Line: 6}}, 6},
 		{MasterDirective{pos: pos{Line: 7}}, 7},

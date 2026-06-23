@@ -57,9 +57,9 @@ func TestAtomicAddInt_NoLostUpdates(t *testing.T) {
 func TestAtomicStoreLoadInt(t *testing.T) {
 	var x int
 
-	AtomicStoreInt(&x, 42)
-	if got := AtomicLoadInt(&x); got != 42 {
-		t.Errorf("AtomicLoadInt after store(42) = %d, want 42", got)
+	AtomicStoreInt(&x, 256)
+	if got := AtomicLoadInt(&x); got != 256 {
+		t.Errorf("AtomicLoadInt after store(256) = %d, want 256", got)
 	}
 
 	AtomicStoreInt(&x, -1)

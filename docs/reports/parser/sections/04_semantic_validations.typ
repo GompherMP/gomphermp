@@ -53,4 +53,4 @@ Las cláusulas que reciben listas de variables (`private`, `firstprivate`, `last
 
 = Conclusión
 
-El módulo Parser alcanza una cobertura del 100% de instrucciones ejecutables, con 90 pruebas que cubren tanto el análisis sintáctico de cada directiva y cláusula soportada como las validaciones semánticas adicionales. La suite verifica el comportamiento correcto sobre código válido y el rechazo explícito de cada combinación inválida documentada en la especificación.
+El módulo Parser alcanza una cobertura del 100% de instrucciones ejecutables, con 99 pruebas que cubren tanto el análisis sintáctico de cada directiva y cláusula soportada como las validaciones semánticas adicionales. La suite verifica el comportamiento correcto sobre código válido y el rechazo explícito de cada combinación inválida documentada en la especificación.
