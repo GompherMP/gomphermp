@@ -1,3 +1,5 @@
 *.pdf
 gompher
 */**/gompher_*.go
+.direnv/
+.envrc
