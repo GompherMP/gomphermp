@@ -8,7 +8,7 @@ Define una unidad de trabajo explícita y asíncrona.
 
 #figure(
   ```go
-  //gompher task [depend(tipo:list) | private(list) | firstprivate(list)]
+  //gompher task [depend(tipo:list) | private(list) | firstprivate(list) | shared(list)]
   bloque
   ```,
   caption: [Gramática de la directiva de creación de tareas asíncronas (task)]

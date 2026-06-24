@@ -59,11 +59,43 @@ Distribuye las iteraciones de un bucle entre las goroutines del equipo actual.
 
 #figure(
   ```go
-  //gompher for [private(list) | firstprivate(list)]
+  //gompher for [private(list) | firstprivate(list) | lastprivate(list) | reduction(op:list) | schedule(kind[, chunk])]
   bucle_for_canonico
   ```,
   caption: [Sintaxis de la construcción de bucle paralelo (for)]
 )
+
+=== Forma canónica del bucle (`bucle_for_canonico`)
+
+Las directivas de bucle (`for`, `parallel for`, `taskloop`) requieren que el `for` anotado tenga *forma canónica*, de modo que el número de iteraciones sea calculable antes de ejecutar y el espacio se pueda repartir entre las goroutines del equipo:
+
+#figure(
+  ```go
+  for v := lb; v relop b; paso {
+      // cuerpo; v no se reasigna aquí
+  }
+  ```,
+  caption: [Forma canónica del bucle]
+)
+
+Reglas:
+- *Inicialización:* `v := lb`, con una única variable de inducción. `lb` es invariante.
+- *Condición:* `v relop b`, con la inducción a la izquierda y `relop` ∈ `{<, <=, >, >=}`. `b` es invariante.
+- *Paso:* `v++`, `v--`, `v += c` o `v -= c` (con `c` invariante). La dirección del paso debe concordar con la condición (ascendente con `<`/`<=`, descendente con `>`/`>=`).
+- *Inducción inmutable:* el cuerpo no reasigna `v`.
+
+GompherMP *normaliza* el bucle al espacio `[0, M)` (donde `M` es el número de iteraciones, calculado a partir de `lb`, `b` y el paso) y recupera la variable de inducción dentro del cuerpo con `v := lb +/- k*paso`. La forma estrecha `for v := 0; v < N; v++` se emite directamente sobre `[0, N)` sin remapeo (sin sobrecosto). GompherMP rechaza en compilación los bucles no canónicos.
+
+#figure(
+  ```go
+  //gompher parallel for reduction(+:sum)
+  for i := 1; i <= N; i++ {   // inicio en 1, cota inclusiva
+      sum += i                 //   -> normalizado a [0, N), i recuperado
+  }
+  ```,
+  caption: [Forma canónica no trivial: inicio no nulo y cota inclusiva]
+)
+
 === Ejemplo de Reparto Estático
 
 #figure(
@@ -119,7 +151,7 @@ Define un conjunto de bloques de trabajo independientes distribuibles.
 
 #figure(
   ```go
-  //gompher sections [private(list) | firstprivate(list)]
+  //gompher sections [private(list) | firstprivate(list) | lastprivate(list) | reduction(op:list)]
   {
       //gompher section
       bloque
@@ -128,6 +160,15 @@ Define un conjunto de bloques de trabajo independientes distribuibles.
   }
   ```,
   caption: [Gramática para la definición de secciones independientes]
+)
+
+La forma combinada `parallel sections` provisiona el equipo y distribuye las secciones en un solo paso; acepta las mismas cláusulas de `sections` más `shared(list)` (heredada del lado `parallel`):
+
+#figure(
+  ```go
+  //gompher parallel sections [private(list) | firstprivate(list) | lastprivate(list) | reduction(op:list) | shared(list)]
+  ```,
+  caption: [Sintaxis de la construcción combinada parallel sections]
 )
 
 === Ejemplo de Paralelismo Funcional
