@@ -101,6 +101,9 @@ Para la construcción de las cadenas de búsqueda se utilizaron los siguientes k
 
 A partir de los keywords definidos, se construyó una cadena de búsqueda unificada y adaptada a la sintaxis de cada motor de búsqueda seleccionado. En la tabla que se presenta a continuación, se muestran las cadenas finales utilizadas en cada plataforma.
 
+
+#[
+#set smartquote(enabled: false)
 #figure(
   table(
     columns: (1.25fr,2fr,0.75fr),
@@ -114,6 +117,7 @@ A partir de los keywords definidos, se construyó una cadena de búsqueda unific
   caption: [Cadenas de búsqueda usadas],
   kind: table,
 ) <tab:tabla-9-cadenas-de-busqueda-us>
+]
 
 
 === Criterios de inclusión y exclusión
@@ -152,6 +156,9 @@ Para refinar la selección de documentos, se aplicó un proceso de filtrado en d
 
   El resultado de este proceso de filtrado es el conjunto final de documentos sin duplicados para la extracción de datos, cuya cantidad se detalla en la siguiente tabla.
 
+
+#[
+#set smartquote(enabled: false)
 #figure(
   table(
     columns: (1.25fr,2fr,0.75fr),
@@ -165,6 +172,7 @@ Para refinar la selección de documentos, se aplicó un proceso de filtrado en d
   caption: [Cadenas de búsqueda usadas],
   kind: table,
 ) <tab:tabla-10-cadenas-de-busqueda-u>
+]
 
 Cabe resaltar que, según la documentación oficial de IEEE Xplore, la modalidad Command Search permite el uso de operadores booleanos (AND, OR, NOT) para construir consultas personalizadas (IEEE Xplore, s. f.-a). Asimismo, en los ejemplos oficiales proporcionados por la plataforma se evidencia que la búsqueda puede ejecutarse sin especificar un campo único, lo cual sugiere que la expresión booleana se aplica sobre los campos disponibles en la base de datos, incluyendo metadatos y texto completo cuando corresponda (IEEE Xplore, s. f.-b).
 
