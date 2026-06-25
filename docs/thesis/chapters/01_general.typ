@@ -249,7 +249,7 @@ A continuación, se detallan las herramientas, métodos y procedimientos necesar
 
 #figure(
   table(
-    columns: 2,
+    columns: (0.75fr, 1fr),
     stroke: 0.5pt,
     fill: (col, row) => if row < 2 { luma(230) },
     align: (col, row) => if row == 1 { center + top } else { left + top },
@@ -258,9 +258,9 @@ A continuación, se detallan las herramientas, métodos y procedimientos necesar
       table.cell(colspan: 2)[*Objetivo 1: Diseñar y especificar la arquitectura de la herramienta GompherMP, incluyendo la sintaxis de sus directivas y cláusulas, los algoritmos de transformación de código y la interfaz de línea de comandos (CLI).*],
       [*Resultado*], [*Herramientas, métodos y procedimientos*],
     ),
-    [R1. Documento de especificación de directivas y cláusulas.], [Herramienta: Typst],
-    [R2. Diseño de la arquitectura de la herramienta.], [Herramientas: Excalidraw, Typst \ Método: Arquitectura centrada en componentes],
-    [R3. Especificación funcional de la Interfaz de Línea de Comandos (CLI).], [Herramienta: Typst],
+    [R1. Documento de especificación de directivas y cláusulas.], [*Herramienta:* Typst],
+    [R2. Diseño de la arquitectura de la herramienta.], [*Herramientas:* Excalidraw, Typst \ Método: Arquitectura centrada en componentes],
+    [R3. Especificación funcional de la Interfaz de Línea de Comandos (CLI).], [*Herramienta:* Typst],
   ),
   caption: [Herramientas, métodos y procedimientos relacionados al objetivo específico 1 y sus resultados esperados],
   kind: table,
@@ -268,7 +268,7 @@ A continuación, se detallan las herramientas, métodos y procedimientos necesar
 
 #figure(
   table(
-    columns: 2,
+    columns: (0.75fr, 1fr),
     stroke: 0.5pt,
     fill: (col, row) => if row < 2 { luma(230) },
     align: (col, row) => if row == 1 { center + top } else { left + top },
@@ -277,12 +277,12 @@ A continuación, se detallan las herramientas, métodos y procedimientos necesar
       table.cell(colspan: 2)[*Objetivo 2: Implementar la infraestructura central de GompherMP, integrando un compilador source-to-source para la transformación de directivas y una librería de runtime para la orquestación eficiente de la concurrencia y sincronización en Go.*],
       [*Resultado*], [*Herramientas, métodos y procedimientos*],
     ),
-    [R4. Módulo de gestión de goroutines y reparto de trabajo implementado y probado.], [Herramientas: Go, Neovim, VScode, Github \ Métodos: Metodología Kanban, TDD \ Procedimientos: Pruebas unitarias],
-    [R5. Módulo de mecanismos de sincronización implementado y probado.], [Herramientas: Go, Neovim, VScode, Github \ Métodos: Metodología Kanban, TDD \ Procedimientos: Pruebas unitarias],
-    [R6. Módulo de soporte para paralelismo de tareas (tasking) implementado y probado.], [Herramientas: Go, Neovim, VScode, Github \ Métodos: Metodología Kanban, TDD \ Procedimientos: Pruebas unitarias],
-    [R7. Analizador sintáctico (Parser) de directivas GompherMP.], [Herramientas: Go, Neovim, VScode, Github, Go/AST, Go/test \ Métodos: Metodología kanban, TDD, análisis sintáctico \ Procedimientos: Pruebas unitarias],
-    [R8. Motor de transformación del AST implementado.], [Herramientas: Go, Neovim, VScode, Github, Go/AST, Go/test \ Métodos: Metodología kanban, TDD, transformación de abstract syntax trees \ Procedimientos: Pruebas unitarias],
-    [R9. Herramienta GompherMP (CLI) funcional.], [Herramientas: Go, Neovim, VScode, Github, Cobra \ Métodos: Metodología kanban, TDD \ Procedimientos: Pruebas unitarias, pruebas de integración],
+    [R4. Módulo de gestión de goroutines y reparto de trabajo implementado y probado.], [*Herramientas:* Go, Neovim, VScode, Github \ *Métodos:* Metodología Kanban, TDD \ *Procedimientos:* Pruebas unitarias],
+    [R5. Módulo de mecanismos de sincronización implementado y probado.], [*Herramientas:* Go, Neovim, VScode, Github \ *Métodos:* Metodología Kanban, TDD \ *Procedimientos:* Pruebas unitarias],
+    [R6. Módulo de soporte para paralelismo de tareas (tasking) implementado y probado.], [*Herramientas:* Go, Neovim, VScode, Github \ *Métodos:* Metodología Kanban, TDD \ *Procedimientos:* Pruebas unitarias],
+    [R7. Analizador sintáctico (Parser) de directivas GompherMP.], [*Herramientas:* Go, Neovim, VScode, Github, Go/AST, Go/test \ *Métodos:* Metodología kanban, TDD, análisis sintáctico \ *Procedimientos:* Pruebas unitarias],
+    [R8. Motor de transformación del AST implementado.], [*Herramientas:* Go, Neovim, VScode, Github, Go/AST, Go/test \ *Métodos:* Metodología kanban, TDD, transformación de abstract syntax trees \ *Procedimientos:* Pruebas unitarias],
+    [R9. Herramienta GompherMP (CLI) funcional.], [*Herramientas:* Go, Neovim, VScode, Github, Cobra \ *Métodos:* Metodología kanban, TDD \ *Procedimientos:* Pruebas unitarias, pruebas de integración],
   ),
   caption: [Herramientas, métodos y procedimientos relacionados al objetivo específico 2 y sus resultados esperados],
   kind: table,
@@ -290,7 +290,7 @@ A continuación, se detallan las herramientas, métodos y procedimientos necesar
 
 #figure(
   table(
-    columns: 2,
+    columns: (0.75fr, 1fr),
     stroke: 0.5pt,
     fill: (col, row) => if row < 2 { luma(230) },
     align: (col, row) => if row == 1 { center + top } else { left + top },
@@ -299,9 +299,9 @@ A continuación, se detallan las herramientas, métodos y procedimientos necesar
       table.cell(colspan: 2)[*Objetivo 3: Evaluar la herramienta GompherMP mediante la ejecución de benchmarks, comparando sus resultados en términos de rendimiento y expresividad del código frente a las implementaciones secuenciales y paralelas manuales en Go.*],
       [*Resultado*], [*Herramientas, métodos y procedimientos*],
     ),
-    [R10. Suite de benchmarks implementada.], [Herramientas: Go, C, OpenMP \ Métodos: Benchmarking de algoritmos de computación intensiva \ Procedimiento: Performance profiling],
-    [R11. Informe de evaluación de rendimiento y escalabilidad.], [Herramientas: Python, Matplotlib, Typst \ Métodos: Análisis comparativo con pruebas estadísticas, análisis cualitativo \ Procedimiento: ANOVA, t-test],
-    [R12. Reporte de análisis comparativo sobre expresividad y productividad.], [Herramientas: Python, Scipy, Typst \ Métodos: Análisis comparativo con pruebas estadísticas, análisis cualitativo \ Procedimiento: ANOVA, t-test],
+    [R10. Suite de benchmarks implementada.], [*Herramientas:* Go, C, OpenMP \ *Métodos:* Benchmarking de algoritmos de computación intensiva \ *Procedimiento:* Performance profiling],
+    [R11. Informe de evaluación de rendimiento y escalabilidad.], [*Herramientas:* Python, Matplotlib, Typst \ *Métodos:* Análisis comparativo con pruebas estadísticas, análisis cualitativo \ *Procedimiento:* ANOVA, t-test],
+    [R12. Reporte de análisis comparativo sobre expresividad y productividad.], [*Herramientas:* Python, Scipy, Typst \ *Métodos:* Análisis comparativo con pruebas estadísticas, análisis cualitativo \ *Procedimiento:* ANOVA, t-test],
   ),
   caption: [Herramientas, métodos y procedimientos relacionados al objetivo específico 3 y sus resultados esperados],
   kind: table,
@@ -348,7 +348,7 @@ Según el equipo de Go (s.f.), el paquete ast declara los tipos utilizados para 
 
 ==== Go/test
 
-Según el equipo de Go (s.f.), el paquete testing provee el soporte para pruebas automatizadas de paquetes de Go, siendo la base para la creación de tests unitarios y benchmarks. Dentro de este proyecto, será una herramienta crucial para cumplir con los objetivos de evaluación, ya que se utilizará para implementar las pruebas unitarias y de integración que validarán la correctitud de los módulos de la librería de runtime y del compilador (Objetivo específico 2). Asimismo, será fundamental para desarrollar la suite de benchmarks necesaria para medir el rendimiento y la escalabilidad de GompherMP, tal como lo exige el objetivo específico 3.
+Según el equipo de Go (s.f.), el paquete testing provee el soporte para pruebas automatizadas de paquetes de Go, siendo la base para la creación de tests unitarios y benchmarks. Dentro de este proyecto, será una herramienta crucial para cumplir con los objetivos de evaluación, ya que se utilizará para implementar las pruebas unitarias y de integración que validarán la correctitud de los módulos de la librería de runtime y del compilador (objetivo específico 2). Asimismo, será fundamental para desarrollar la suite de benchmarks necesaria para medir el rendimiento y la escalabilidad de GompherMP, tal como lo exige el objetivo específico 3.
 
 
 ==== Cobra
