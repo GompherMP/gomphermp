@@ -11,6 +11,10 @@
   set text(font: "Times New Roman", size: 12pt, lang: "es")
   set par(justify: true, leading: 1.5em, spacing: 1.5em)
 
+  // Inline/block code: a monospace font slightly smaller so it sits well next
+  // to Times New Roman. Falls back to DejaVu Sans Mono if Consolas is missing.
+  show raw: set text(font: ("Consolas", "DejaVu Sans Mono"), size: 0.92em)
+
   set heading(numbering: (..nums) => {
     let n = nums.pos()
     if n.len() != 1 {

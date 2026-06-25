@@ -28,7 +28,7 @@ La realización del presente trabajo se fundamenta en los siguientes criterios:
 
 *Viabilidad*
 
-*Viabilidad Técnica:* Se sustenta en una arquitectura componetizada y desacoplada que favorece el desarrollo guiado por pruebas (TDD). El alcance técnico se limita a un subconjunto de directivas, apoyándose en herramientas nativas del ecosistema Go (ast, testing, pprof) .
+*Viabilidad Técnica:* Se sustenta en una arquitectura componetizada y desacoplada que favorece el desarrollo guiado por pruebas (TDD). El alcance técnico se limita a un subconjunto de directivas, apoyándose en herramientas nativas del ecosistema Go (`ast`, `testing`, `pprof`) .
 
 *Viabilidad Económica:* El proyecto se basa en software de código abierto (licencias MIT/GNU) y hardware personal, eliminando la necesidad de adquirir GPUs. Se contempla el uso de Cloud Computing para pruebas estandarizadas.
 
@@ -38,7 +38,7 @@ La realización del presente trabajo se fundamenta en los siguientes criterios:
 
 El proyecto comprende el desarrollo de una herramienta de paralelismo estructurado y basado en tareas para Go.
 
-*Incluye:* Implementación de un subset de directivas y cláusulas OpenMP; desarrollo de una CLI; construcción de un compilador source-to-source (transformación de AST); implementación de un runtime (gestión de goroutine pool, scheduling, sincronización); y evaluación mediante benchmarking de algoritmos de cómputo intensivo .
+*Incluye:* Implementación de un _subset_ de directivas y cláusulas OpenMP; desarrollo de una CLI; construcción de un compilador _source-to-source_ (transformación de AST); implementación de un runtime (gestión de goroutine _pool_, _scheduling_, sincronización); y evaluación mediante _benchmarking_ de algoritmos de cómputo intensivo .
 
 *Excluye:* Especificación completa del estándar OpenMP, soporte para CUDA/GPUs y paralelización automática sin directivas explícitas .
 
@@ -137,9 +137,9 @@ A continuación, se proporciona el enlace permanente al cronograma maestro, dond
 
 *Humanos:* Tesistas (Patricia Cántaro, Jorge Alejandro), Asesor (Prof. Viktor Khlebnikov), Especialista de Computer Systems.
 
-*Equipamiento:* PCs de desarrollo, instancias en la nube para benchmarking .
+*Equipamiento:* PCs de desarrollo, instancias en la nube para _benchmarking_ .
 
-*Herramientas:* Go toolchain (go, ast, testing, pprof), Python, Matplotlib, SciPy, Github, Typst, VSCode/Neovim .
+*Herramientas:* Go _toolchain_ (`go`, `ast`, `testing`, `pprof`), Python, Matplotlib, SciPy, Github, Typst, VSCode/Neovim .
 
 *Costeo del proyecto*
 
@@ -189,23 +189,23 @@ Carpeta de validaciones del experto en programación paralela para los resultado
 
 Este anexo proporciona el acceso al repositorio oficial de control de versiones de la herramienta GompherMP.
 
-#link("https://github.com/zet79/gomphermp")
+#link("https://github.com/GompherMP/gomphermp")
 
 == Anexo H. Cobertura de Pruebas del Módulo de Gestión de Goroutines
 
-Documento técnico de cobertura de pruebas del módulo de gestión de goroutines y reparto de trabajo correspondiente al resultado R4. Incluye las  pruebas unitarias ejecutadas, las primitivas verificadas (Parallel, For, ParallelFor, ForDynamic y Sections) y los resultados cuantitativos obtenidos mediante las herramientas nativas de cobertura de Go.
+Documento técnico de cobertura de pruebas del módulo de gestión de goroutines y reparto de trabajo correspondiente al resultado R4. Incluye las  pruebas unitarias ejecutadas, las primitivas verificadas (`Parallel`, `For`, `ParallelFor`, `ForDynamic` y `Sections`) y los resultados cuantitativos obtenidos mediante las herramientas nativas de cobertura de Go.
 
 #link("https://drive.google.com/drive/folders/1sSyETXlrd0ZIiSJ--a7X05ysg5Jmyu0d?usp=drive_link")
 
 == Anexo I. Cobertura de Pruebas de los Mecanismos de Sincronización
 
-Documento técnico de cobertura de pruebas del módulo de mecanismos de sincronización correspondiente al resultado R5. Incluye las pruebas unitarias ejecutadas, las primitivas verificadas (Critical, Single, Master y Barrier) y los resultados cuantitativos obtenidos mediante las herramientas nativas de cobertura de Go.
+Documento técnico de cobertura de pruebas del módulo de mecanismos de sincronización correspondiente al resultado R5. Incluye las pruebas unitarias ejecutadas, las primitivas verificadas (`Critical`, `Single`, `Master` y `Barrier`) y los resultados cuantitativos obtenidos mediante las herramientas nativas de cobertura de Go.
 
 #link("https://drive.google.com/drive/folders/1mFvz1WowOUsMPsgsaAGyQKANYIiQthYt?usp=drive_link")
 
 == Anexo J. Cobertura de Pruebas del módulo de Tareas
 
-Documento técnico de cobertura de pruebas del módulo de soporte para paralelismo de tareas correspondiente al resultado R6. Incluye las pruebas unitarias ejecutadas, las primitivas verificadas (Task, Taskwait, Taskgroup, Taskloop y TaskWithDepend) y los resultados cuantitativos obtenidos mediante las herramientas nativas de cobertura de Go.
+Documento técnico de cobertura de pruebas del módulo de soporte para paralelismo de tareas correspondiente al resultado R6. Incluye las pruebas unitarias ejecutadas, las primitivas verificadas (`Task`, `Taskwait`, `Taskgroup`, `Taskloop` y `TaskWithDepend`) y los resultados cuantitativos obtenidos mediante las herramientas nativas de cobertura de Go.
 
 #link("https://drive.google.com/file/d/1x756HAXtZuinyMadj8NQ5XmUdUpHCqCD/view?usp=sharing")
 
