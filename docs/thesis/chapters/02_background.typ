@@ -2,13 +2,13 @@
 = Capítulo 2. Marco Referencial
 
 
-== 2.1. Marco Teórico
+== Marco Teórico
 
 
-=== 2.1.1. Computación Paralela
+=== Computación Paralela
 
 
-==== 2.1.1.1. Taxonomía de Flynn
+==== Taxonomía de Flynn
 
 De acuerdo con Hennessy y Patterson (2012), una de las clasificaciones más fundamentales y duraderas para las arquitecturas de computadores paralelos fue la propuesta por Michael Flynn en la década de 1960. Este modelo, que sigue siendo una referencia en la actualidad, categoriza los computadores en función de los flujos de instrucciones y de datos que pueden procesar. La taxonomía se divide en cuatro categorías principales:
 
@@ -21,7 +21,7 @@ Multiple instruction streams, single data stream (MISD): Aunque lógicamente com
 Multiple instruction streams, multiple data streams (MIMD): Hennessy y Patterson (2012) la describen como la arquitectura más flexible y general, en la que cada procesador ejecuta su propio flujo de instrucciones sobre sus propios datos. Este modelo está orientado de forma natural a explotar el paralelismo de tareas (task-level parallelism) y es la base de la mayoría de los sistemas multinúcleo y clústeres actuales.
 
 
-==== 2.1.1.2. Concurrencia y Paralelismo
+==== Concurrencia y Paralelismo
 
 Aunque en la práctica los términos concurrencia y paralelismo a menudo se utilizan de manera intercambiable, es fundamental establecer una distinción conceptual para el propósito de este trabajo. Según Pacheco y Malensek (2022), aunque no existe un acuerdo completo en la comunidad sobre la definición exacta de estos términos, es posible trazar diferencias clave.
 
@@ -32,7 +32,7 @@ Por otro lado, el paralelismo, de acuerdo con Pacheco y Malensek (2022), describ
 De esta manera, todo programa paralelo es inherentemente concurrente, pero no todo programa concurrente es paralelo. Pacheco y Malensek (2022) sugieren que una distinción útil radica en el nivel de acoplamiento: las tareas en un programa paralelo están "estrechamente acopladas", ya que se ejecutan en núcleos que comparten memoria o están conectados por una red de muy alta velocidad.
 
 
-==== 2.1.1.3. Modelos de Computación Paralela
+==== Modelos de Computación Paralela
 
 La forma en que los programas paralelos gestionan el acceso a la memoria y coordinan sus diferentes hilos de ejecución define su modelo de computación. De acuerdo con Pacheco y Malensek (2022), estos modelos determinan cómo se comunican y sincronizan las tareas para resolver un problema de forma cooperativa.
 
@@ -43,7 +43,7 @@ Sistemas de Memoria Distribuida: En contraste, en los programas de memoria distr
 Sistemas Híbridos: Existe también la posibilidad de programar sistemas híbridos, como los clústers de procesadores multinúcleo. Pacheco y Malensek (2022) explican que esto se puede lograr utilizando una combinación de una API de memoria compartida dentro de cada nodo y una API de memoria distribuida para la comunicación entre los nodos. Sin embargo, este enfoque se reserva generalmente para programas que requieren los más altos niveles de rendimiento, ya que la complejidad de utilizar una API híbrida dificulta considerablemente el desarrollo del programa.
 
 
-==== 2.1.1.4. Modelos de Comunicación y Sincronización
+==== Modelos de Comunicación y Sincronización
 
 Cuando múltiples procesos o hilos se ejecutan de forma paralela, es indispensable contar con mecanismos que les permitan comunicarse y coordinar sus acciones. Según Pacheco y Malensek (2022), la necesidad de sincronizar los hilos es uno de los problemas fundamentales que deben resolverse para crear un programa paralelo correcto. Existen dos paradigmas principales para lograr esta coordinación: uno basado en el intercambio explícito de información y otro en el acceso controlado a recursos comunes.
 
@@ -51,7 +51,7 @@ Paso de Mensajes y CSP:
 
 El modelo de paso de mensajes se basa en la idea de que los procesos, que no comparten memoria, se comunican enviándose datos explícitamente entre ellos. Uno de los modelos teóricos más influyentes en este paradigma es el de Procesos Secuenciales Comunicantes (Communicating Sequential Processes o CSP), propuesto por C.A.R. Hoare.
 
-Según Hoare (1978), en el modelo CSP, la entrada y la salida son consideradas primitivas básicas de la programación. La comunicación ocurre cuando un proceso nombra a otro como destino para una salida (destination!expression) y el segundo nombra al primero como fuente para una entrada (source?target_variable). Un aspecto fundamental de este modelo es que la comunicación es sincrónica y sin búferes intermedios (unbuffered). Hoare (1978) especifica que un comando de entrada o salida se retrasa hasta que el proceso correspondiente esté listo para realizar la operación complementaria. En ese momento, los comandos se ejecutan simultáneamente y el valor se transfiere. Esta sincronización inherente en el acto de comunicación es una característica central del modelo CSP.
+Según Hoare (1978), en el modelo CSP, la entrada y la salida son consideradas primitivas básicas de la programación. La comunicación ocurre cuando un proceso nombra a otro como destino para una salida (destination!expression) y el segundo nombra al primero como fuente para una entrada (source?target\_variable). Un aspecto fundamental de este modelo es que la comunicación es sincrónica y sin búferes intermedios (unbuffered). Hoare (1978) especifica que un comando de entrada o salida se retrasa hasta que el proceso correspondiente esté listo para realizar la operación complementaria. En ese momento, los comandos se ejecutan simultáneamente y el valor se transfiere. Esta sincronización inherente en el acto de comunicación es una característica central del modelo CSP.
 
 Variables Compartidas y Sincronización:
 
@@ -62,7 +62,7 @@ Para resolver este problema, se han desarrollado diversas herramientas de sincro
 Para simplificar la tarea del programador y evitar los errores comunes asociados a los semáforos, se han desarrollado abstracciones de más alto nivel como los monitores. Silberschatz et al. (2009) introducen los monitores como una construcción que busca ofrecer un mecanismo conveniente y efectivo para la sincronización, mitigando los errores de temporización difíciles de detectar que pueden surgir con el uso de semáforos.
 
 
-==== 2.1.1.5. Leyes y Límites Teóricos del Rendimiento Paralelo
+==== Leyes y Límites Teóricos del Rendimiento Paralelo
 
 Para comprender y predecir la ganancia de rendimiento potencial al paralelizar un programa, existen modelos teóricos fundamentales que establecen los límites de la aceleración (speedup) que se puede alcanzar.
 
@@ -87,10 +87,10 @@ Ley de Gustafson:
 La Ley de Amdahl puede presentar un panorama desalentador para el paralelismo. Sin embargo, Pacheco y Malensek (2022) señalan que una de las principales críticas a esta ley es que no toma en consideración el tamaño del problema. Argumentan que, para muchos problemas del mundo real, a medida que el tamaño del problema aumenta, la fracción del programa que es inherentemente secuencial tiende a disminuir.
 
 
-=== 2.1.2. Computación de Alto Rendimiento (HPC)
+=== Computación de Alto Rendimiento (HPC)
 
 
-==== 2.1.2.1. Definición y Objetivos de HPC
+==== Definición y Objetivos de HPC
 
 La evolución de la ciencia y la ingeniería ha estado intrínsecamente ligada a la capacidad de procesamiento computacional. Problemas de gran envergadura, como la creación de modelos climáticos precisos, el estudio del plegamiento de proteínas para comprender enfermedades degenerativas, o el análisis masivo de datos genómicos, demandan un poder de cómputo que excede las capacidades de los sistemas convencionales (Pacheco & Malensek, 2022). Durante décadas, la industria del hardware respondió a esta necesidad incrementando la velocidad de los procesadores de un solo núcleo, una estrategia impulsada por el aumento en la densidad de transistores.
 
@@ -99,25 +99,25 @@ Sin embargo, como señalan Pacheco y Malensek (2022), a principios del siglo XXI
 Este enfoque es la base de la Computación de Alto Rendimiento (HPC). Según IBM (2025), la HPC puede definirse como una tecnología que utiliza clusters de procesadores potentes que trabajan en paralelo para procesar conjuntos de datos masivos y resolver problemas complejos a velocidades extremadamente altas. El objetivo fundamental de la HPC, por lo tanto, es agregar la potencia de cómputo de múltiples unidades de procesamiento para abordar problemas que, por su escala o complejidad, serían intratables para los sistemas de computación tradicionales, impulsando así la investigación y la innovación en dominios críticos.
 
 
-== 2.2. Marco Conceptual
+== Marco Conceptual
 
 
-=== 2.2.1. Concurrencia pragmática en Go: goroutines, canales y sincronización
+=== Concurrencia pragmática en Go: goroutines, canales y sincronización
 
 
-==== 2.2.1.1. Descripción General
+==== Descripción General
 
 Go adopta un enfoque inspirado en CSP, donde la composición de tareas y la seguridad de acceso a datos se apoyan en goroutines y canales como mecanismos primarios. La práctica recomendada es coordinar el intercambio de datos mediante comunicación explícita, en lugar de compartir memoria directamente (The Go Programming Language, s. f., Effective Go; The Go Programming Language, s. f., FAQ).
 
 
-==== 2.2.1.2. Componentes y modelo de ejecución
+==== Componentes y modelo de ejecución
 
 Goroutines: Son la unidad fundamental de concurrencia en Go. A diferencia de los hilos del sistema operativo, las goroutines son extremadamente ligeras y están gestionadas por el runtime; sus stacks comienzan en pocos kilobytes y crecen o se reducen dinámicamente, lo que permite lanzar cientos de miles en un mismo proceso (The Go Programming Language, s. f., Effective Go).
 
 Scheduler y paralelismo: El runtime multiplexa goroutines sobre hilos del sistema operativo y permite ajustar el grado de paralelismo con GOMAXPROCS, de modo que varias goroutines puedan ejecutarse realmente en paralelo en múltiples CPU lógicas cuando corresponde (The Go Programming Language, s. f., Effective Go).
 
 
-==== 2.2.1.3. Comunicación y Sincronización
+==== Comunicación y Sincronización
 
 Canales (channels): Son conductos tipados para enviar/recibir valores entre goroutines y materializan la idea “no te comuniques compartiendo memoria; comparte memoria comunicándote” (The Go Programming Language, s. f., Effective Go). Además, el modelo de memoria de Go establece relaciones happens-before para las operaciones de canal, posibilitando diseños que eviten data races cuando se transfiere la propiedad de los datos entre goroutines (The Go Programming Language, 2022, The Go Memory Model).
 
@@ -126,15 +126,15 @@ Mutex provee exclusión mutua mediante Lock/Unlock. Semánticamente, el desbloqu
  WaitGroup permite esperar a un conjunto de goroutines con el patrón Add/Done/Wait. Un Done() que permite que Wait() retorne sucede-antes del retorno de ese Wait(), por lo que los efectos de las tareas finalizadas son observables después de la espera (The Go Programming Language, 2022, The Go Memory Model; The Go Programming Language, s. f., pkg sync).
 Otras utilidades (RWMutex, Cond, Once, Map, Pool y sync/atomic) cubren casos específicos, pero para los objetivos de esta tesis Mutex y WaitGroup resultan las más relevantes para contrastar con el modelo de canales (The Go Programming Language, s. f., Effective Go; The Go Programming Language, s. f., pkg sync).
 
-2.2.1.4. Implicancias para el rendimiento y diseño
+==== Implicancias para el rendimiento y diseño
 
 El modelo de Go favorece servidores concurrentes e I/O intensivo gracias a la ligereza de las goroutines y a la composición con canales. En cargas marcadamente CPU-bound, la elección entre canales y sync depende del patrón de acceso a datos y del costo de sincronización; en estructuras altamente compartidas, un Mutex bien ubicado puede reducir sobrecarga frente a protocolos de mensajería más elaborados, mientras que en pipelines de procesamiento los canales simplifican el diseño (The Go Programming Language, s. f., Effective Go; The Go Programming Language, 2022, The Go Memory Model).
 
 
-=== 2.2.2. Paralelismo de Memoria Compartida Dirigido por Directivas: El Estándar OpenMP
+=== Paralelismo de Memoria Compartida Dirigido por Directivas: El Estándar OpenMP
 
 
-==== 2.2.2.1. Definición del Estándar
+==== Definición del Estándar
 
 OpenMP (Open Multi-Processing) es una Interfaz de Programación de Aplicaciones (API) diseñada específicamente para la programación en sistemas de memoria compartida con arquitecturas MIMD. Según Pacheco y Malensek (2022), fue desarrollada por un consorcio de programadores y científicos de la computación que consideraban que escribir programas de alto rendimiento con APIs de bajo nivel como Pthreads era excesivamente difícil. El objetivo era crear un estándar que permitiera desarrollar programas paralelos a un nivel de abstracción más alto.
 
@@ -143,7 +143,7 @@ De acuerdo con Dagum y Menon (1998), OpenMP surgió como una alternativa portabl
 Una de las ventajas más significativas de OpenMP, destacada tanto por Pacheco y Malensek (2022) como por Dagum y Menon (1998), es que permite la paralelización incremental. A diferencia del paso de mensajes, donde todo el programa y sus estructuras de datos deben ser descompuestos para funcionar en paralelo, OpenMP permite a los desarrolladores comenzar por paralelizar pequeñas secciones de un código secuencial existente, como bucles individuales, para obtener mejoras de rendimiento inmediatas con un esfuerzo relativamente bajo.
 
 
-==== 2.2.2.2. Componentes y Modelo de Ejecución
+==== Componentes y Modelo de Ejecución
 
 En su nivel más fundamental, OpenMP está compuesto por tres elementos principales. Según Dagum y Menon (1998), estos son:
 
@@ -169,22 +169,22 @@ Los componentes fundamentales de OpenMP operan en conjunto para ofrecer un model
 
 Para refinar y controlar el comportamiento de estas directivas, se utilizan las Cláusulas. Estas actúan como modificadores que se añaden a los pragmas para gestionar el entorno de datos y la ejecución. Por ejemplo, las cláusulas de visibilidad de datos como private y shared son esenciales para evitar condiciones de carrera, permitiendo al programador especificar si una variable debe tener una copia local para cada hilo o si debe ser compartida entre todos. Cláusulas más avanzadas como reduction simplifican operaciones de agregación comunes (sumas, productos, etc.), automatizando la creación de variables privadas para los resultados parciales y su posterior combinación segura en un resultado final. De este modo, las cláusulas ofrecen un control fino y declarativo sobre aspectos complejos del paralelismo sin contaminar la lógica del algoritmo.
 
-Finalmente, la Librería de Runtime (Runtime Library) complementa el modelo estático de las directivas con un conjunto de funciones que otorgan un control más dinámico y granular sobre el entorno de ejecución paralelo. Funciones como omp_get_thread_num() permiten a un hilo identificar su propio índice dentro del equipo, mientras que omp_get_num_threads() devuelve el número total de hilos activos. Otras, como omp_set_num_threads(), permiten al programa ajustar el número de hilos que se usarán en las siguientes regiones paralelas, facilitando la creación de algoritmos que se adaptan a las condiciones del sistema en tiempo de ejecución. En conjunto, estos tres componentes (directivas, cláusulas y librería de runtime) conforman un ecosistema robusto que ha consolidado a OpenMP como el estándar para el paralelismo de memoria compartida.
+Finalmente, la Librería de Runtime (Runtime Library) complementa el modelo estático de las directivas con un conjunto de funciones que otorgan un control más dinámico y granular sobre el entorno de ejecución paralelo. Funciones como omp\_get\_thread\_num() permiten a un hilo identificar su propio índice dentro del equipo, mientras que omp\_get\_num\_threads() devuelve el número total de hilos activos. Otras, como omp\_set\_num\_threads(), permiten al programa ajustar el número de hilos que se usarán en las siguientes regiones paralelas, facilitando la creación de algoritmos que se adaptan a las condiciones del sistema en tiempo de ejecución. En conjunto, estos tres componentes (directivas, cláusulas y librería de runtime) conforman un ecosistema robusto que ha consolidado a OpenMP como el estándar para el paralelismo de memoria compartida.
 
 
-=== 2.2.2. Fundamentos Conceptuales de la Problemática
+=== Fundamentos Conceptuales de la Problemática
 
 
-==== 2.2.2.1. Fricción Semántico-Sintáctica
+==== Fricción Semántico-Sintáctica
 
 Este es el concepto central que formaliza el problema. Se define como el choque cognitivo y técnico que ocurre cuando se intenta implementar un patrón del paradigma declarativo (OpenMP) usando las primitivas del paradigma concurrente idiomático (Go). El resultado es un código más verboso y difícil de mantener, donde la lógica del algoritmo queda fuertemente acoplada con los mecanismos de concurrencia de bajo nivel (Madridejos Zamorano, 2015).
 
 
-==== 2.2.2.2. Carga Cognitiva
+==== Carga Cognitiva
 
 Es la cantidad de esfuerzo mental que un desarrollador necesita para escribir, entender y razonar sobre un algoritmo. La gestión manual del paralelismo, consecuencia de la fricción, incrementa la carga cognitiva al forzar al programador a manejar detalles complejos de sincronización, lo que aumenta la probabilidad de errores algorítmicos como condiciones de carrera o interbloqueos (Powers & Alaghband, 2007).
 
 
-==== 2.2.2.3. Baja Expresividad y Productividad
+==== Baja Expresividad y Productividad
 
 La expresividad se refiere a la capacidad de un paradigma para formular ideas computacionales complejas de forma clara y concisa. La implementación manual del paralelismo en Go a menudo requiere más líneas de código (LOC) que una solución declarativa para lograr el mismo objetivo (Vikas et al., 2014). Esta verbosidad es un síntoma de baja expresividad y, consecuentemente, de una menor productividad, ya que dificulta la rápida experimentación y el mantenimiento del código.

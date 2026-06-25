@@ -1,33 +1,46 @@
 #align(center)[
-  #image("../assets/pucp_logo.png", width: 4cm)
-
-  *PONTIFICIA UNIVERSIDAD*
-  *CATÓLICA DEL PERÚ*
-
-  *FACULTAD DE CIENCIAS E INGENIERÍA*
-
-  #v(2em)
-
-  *Implementación de paralelismo basado en directivas*
-  *adaptando el estándar OpenMP al lenguaje Go*
 
   #v(1em)
 
-  Tesis para obtener el título profesional de Ingeniero Informático
-  que presenta:
+  #text(size: 18pt)[
+    *PONTIFICIA UNIVERSIDAD*
+    *CATÓLICA DEL PERÚ*
+  ]
 
-  *Jorge David Alejandro Contreras*
-  *Patricia Natividad Cántaro Márquez*
+  #text(size: 16pt)[*FACULTAD DE CIENCIAS E INGENIERÍA*]
+  
+  #v(1em)
+
+  #image("../assets/pucp_logo.png", width: 17cm)
 
   #v(1em)
 
-  Asesor(a) (es):
+  #text(size: 14pt)[
+    *Implementación de paralelismo basado en directivas*
+    *adaptando el estándar OpenMP al lenguaje Go*
+  
+    #v(2em)
 
-  *Viktor Khlebnikov*
+    Tesis para obtener el título profesional de Ingeniero Informático
 
-  #v(2em)
+    que presenta:
 
-  Lima, 2026
+    #v(2em)
+
+    Jorge David Alejandro Contreras
+
+    Patricia Natividad Cántaro Márquez
+
+    #v(2em)
+
+    Asesor(a)(es):
+
+    Viktor Khlebnikov
+
+    #v(2em)
+
+    Lima, 2026
+  ]
 ]
 
 #pagebreak()
