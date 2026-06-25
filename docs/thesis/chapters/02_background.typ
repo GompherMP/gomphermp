@@ -12,13 +12,13 @@
 
 De acuerdo con Hennessy y Patterson (2012), una de las clasificaciones más fundamentales y duraderas para las arquitecturas de computadores paralelos fue la propuesta por Michael Flynn en la década de 1960. Este modelo, que sigue siendo una referencia en la actualidad, categoriza los computadores en función de los flujos de instrucciones y de datos que pueden procesar. La taxonomía se divide en cuatro categorías principales:
 
-Single instruction stream, single data stream (SISD): Esta categoría, según Hennessy y Patterson (2012), representa al uniprocesador estándar, donde un único flujo de instrucciones opera sobre un único flujo de datos.
+- *Single instruction stream, single data stream (SISD):* Esta categoría, según Hennessy y Patterson (2012), representa al uniprocesador estándar, donde un único flujo de instrucciones opera sobre un único flujo de datos.
 
-Single instruction stream, multiple data streams (SIMD): En este modelo, una única instrucción es aplicada sobre múltiples flujos de datos de forma simultánea, lo que permite explotar el paralelismo de datos (data-level parallelism). Hennessy y Patterson (2012) señalan que ejemplos de esta arquitectura son las arquitecturas vectoriales y las Unidades de Procesamiento Gráfico (GPUs).
+- *Single instruction stream, multiple data streams (SIMD):* En este modelo, una única instrucción es aplicada sobre múltiples flujos de datos de forma simultánea, lo que permite explotar el paralelismo de datos (data-level parallelism). Hennessy y Patterson (2012) señalan que ejemplos de esta arquitectura son las arquitecturas vectoriales y las Unidades de Procesamiento Gráfico (GPUs).
 
-Multiple instruction streams, single data stream (MISD): Aunque lógicamente completa la taxonomía, los autores indican que hasta la fecha no se han construido computadores comerciales que se ajusten a esta categoría (Hennessy & Patterson, 2012).
+- *Multiple instruction streams, single data stream (MISD):* Aunque lógicamente completa la taxonomía, los autores indican que hasta la fecha no se han construido computadores comerciales que se ajusten a esta categoría (Hennessy & Patterson, 2012).
 
-Multiple instruction streams, multiple data streams (MIMD): Hennessy y Patterson (2012) la describen como la arquitectura más flexible y general, en la que cada procesador ejecuta su propio flujo de instrucciones sobre sus propios datos. Este modelo está orientado de forma natural a explotar el paralelismo de tareas (task-level parallelism) y es la base de la mayoría de los sistemas multinúcleo y clústeres actuales.
+- *Multiple instruction streams, multiple data streams (MIMD):* Hennessy y Patterson (2012) la describen como la arquitectura más flexible y general, en la que cada procesador ejecuta su propio flujo de instrucciones sobre sus propios datos. Este modelo está orientado de forma natural a explotar el paralelismo de tareas (task-level parallelism) y es la base de la mayoría de los sistemas multinúcleo y clústeres actuales.
 
 
 ==== Concurrencia y Paralelismo
@@ -36,56 +36,56 @@ De esta manera, todo programa paralelo es inherentemente concurrente, pero no to
 
 La forma en que los programas paralelos gestionan el acceso a la memoria y coordinan sus diferentes hilos de ejecución define su modelo de computación. De acuerdo con Pacheco y Malensek (2022), estos modelos determinan cómo se comunican y sincronizan las tareas para resolver un problema de forma cooperativa.
 
-Sistemas de Memoria Compartida: Según Pacheco y Malensek (2022), en los programas de memoria compartida, las variables pueden ser compartidas o privadas. Las variables compartidas pueden ser leídas o escritas por cualquier hilo de ejecución, mientras que las variables privadas normalmente solo pueden ser accedidas por un único hilo. En este paradigma, la comunicación entre los hilos se realiza de forma implícita a través de la modificación de estas variables compartidas.
+- *Sistemas de Memoria Compartida:* Según Pacheco y Malensek (2022), en los programas de memoria compartida, las variables pueden ser compartidas o privadas. Las variables compartidas pueden ser leídas o escritas por cualquier hilo de ejecución, mientras que las variables privadas normalmente solo pueden ser accedidas por un único hilo. En este paradigma, la comunicación entre los hilos se realiza de forma implícita a través de la modificación de estas variables compartidas.
 
-Sistemas de Memoria Distribuida: En contraste, en los programas de memoria distribuida, los núcleos solo pueden acceder directamente a su propia memoria privada. De acuerdo con Pacheco y Malensek (2022), la forma de comunicación más utilizada en este modelo es el paso de mensajes (message-passing). Es importante destacar que las APIs de memoria distribuida también pueden ser utilizadas en hardware de memoria compartida; para ello, un compilador o una librería se encarga de particionar lógicamente la memoria en espacios de direcciones privados y de implementar la comunicación necesaria. Típicamente, los programas de memoria distribuida se inician como múltiples procesos en lugar de múltiples hilos, ya que los "hilos de ejecución" pueden correr en CPUs con sistemas operativos independientes.
+- *Sistemas de Memoria Distribuida:* En contraste, en los programas de memoria distribuida, los núcleos solo pueden acceder directamente a su propia memoria privada. De acuerdo con Pacheco y Malensek (2022), la forma de comunicación más utilizada en este modelo es el paso de mensajes (message-passing). Es importante destacar que las APIs de memoria distribuida también pueden ser utilizadas en hardware de memoria compartida; para ello, un compilador o una librería se encarga de particionar lógicamente la memoria en espacios de direcciones privados y de implementar la comunicación necesaria. Típicamente, los programas de memoria distribuida se inician como múltiples procesos en lugar de múltiples hilos, ya que los "hilos de ejecución" pueden correr en CPUs con sistemas operativos independientes.
 
-Sistemas Híbridos: Existe también la posibilidad de programar sistemas híbridos, como los clústers de procesadores multinúcleo. Pacheco y Malensek (2022) explican que esto se puede lograr utilizando una combinación de una API de memoria compartida dentro de cada nodo y una API de memoria distribuida para la comunicación entre los nodos. Sin embargo, este enfoque se reserva generalmente para programas que requieren los más altos niveles de rendimiento, ya que la complejidad de utilizar una API híbrida dificulta considerablemente el desarrollo del programa.
+- *Sistemas Híbridos:* Existe también la posibilidad de programar sistemas híbridos, como los clústers de procesadores multinúcleo. Pacheco y Malensek (2022) explican que esto se puede lograr utilizando una combinación de una API de memoria compartida dentro de cada nodo y una API de memoria distribuida para la comunicación entre los nodos. Sin embargo, este enfoque se reserva generalmente para programas que requieren los más altos niveles de rendimiento, ya que la complejidad de utilizar una API híbrida dificulta considerablemente el desarrollo del programa.
 
 
 ==== Modelos de Comunicación y Sincronización
 
 Cuando múltiples procesos o hilos se ejecutan de forma paralela, es indispensable contar con mecanismos que les permitan comunicarse y coordinar sus acciones. Según Pacheco y Malensek (2022), la necesidad de sincronizar los hilos es uno de los problemas fundamentales que deben resolverse para crear un programa paralelo correcto. Existen dos paradigmas principales para lograr esta coordinación: uno basado en el intercambio explícito de información y otro en el acceso controlado a recursos comunes.
 
-Paso de Mensajes y CSP:
+- *Paso de Mensajes y CSP:*
+  El modelo de paso de mensajes se basa en la idea de que los procesos, que no comparten memoria, se comunican enviándose datos explícitamente entre ellos. Uno de los modelos teóricos más influyentes en este paradigma es el de Procesos Secuenciales Comunicantes (Communicating Sequential Processes o CSP), propuesto por C.A.R. Hoare.
 
-El modelo de paso de mensajes se basa en la idea de que los procesos, que no comparten memoria, se comunican enviándose datos explícitamente entre ellos. Uno de los modelos teóricos más influyentes en este paradigma es el de Procesos Secuenciales Comunicantes (Communicating Sequential Processes o CSP), propuesto por C.A.R. Hoare.
+  Según Hoare (1978), en el modelo CSP, la entrada y la salida son consideradas primitivas básicas de la programación, denotadas respectivamente por dos operadores complementarios: el signo de admiración (!) para la salida o envío y el signo de interrogación (?) para la entrada o recepción. La comunicación ocurre cuando un proceso nombra a otro como destino para una salida (escrita destination!expression, que envía el valor de expression al proceso destination) y el segundo nombra al primero como fuente para una entrada (escrita source?target\_variable, que recibe un valor del proceso source y lo almacena en la variable target\_variable). Un aspecto fundamental de este modelo es que la comunicación es sincrónica y sin búferes intermedios (unbuffered). Hoare (1978) especifica que un comando de entrada o salida se retrasa hasta que el proceso correspondiente esté listo para realizar la operación complementaria. En ese momento, los comandos se ejecutan simultáneamente y el valor se transfiere. Esta sincronización inherente en el acto de comunicación es una característica central del modelo CSP.
+  
+- *Variables Compartidas y Sincronización:*
+  En el paradigma de memoria compartida, los procesos se comunican de forma implícita al leer y escribir en una misma área de memoria. Esta flexibilidad introduce un desafío significativo conocido como el problema de la sección crítica. Según Silberschatz, Galvin y Gagne (2009), cada proceso tiene un segmento de código, llamado sección crítica, en el que accede a recursos compartidos. Para garantizar la consistencia de los datos, es crucial que cuando un proceso esté ejecutando su sección crítica, ningún otro proceso pueda ejecutar la suya. Una solución a este problema debe satisfacer tres requisitos: exclusión mutua, progreso y espera limitada.
 
-Según Hoare (1978), en el modelo CSP, la entrada y la salida son consideradas primitivas básicas de la programación. La comunicación ocurre cuando un proceso nombra a otro como destino para una salida (destination!expression) y el segundo nombra al primero como fuente para una entrada (source?target\_variable). Un aspecto fundamental de este modelo es que la comunicación es sincrónica y sin búferes intermedios (unbuffered). Hoare (1978) especifica que un comando de entrada o salida se retrasa hasta que el proceso correspondiente esté listo para realizar la operación complementaria. En ese momento, los comandos se ejecutan simultáneamente y el valor se transfiere. Esta sincronización inherente en el acto de comunicación es una característica central del modelo CSP.
+  Para resolver este problema, se han desarrollado diversas herramientas de sincronización. Una de las más conocidas es el semáforo. Silberschatz et al. (2009) lo definen como una variable entera a la que solo se puede acceder a través de dos operaciones atómicas estándar: wait() (originalmente P) y signal() (originalmente V). A pesar de su utilidad, los semáforos deben usarse con extremo cuidado, ya que un uso incorrecto, como intercambiar el orden de wait() y signal(), puede violar la exclusión mutua o, peor aún, provocar un interbloqueo (deadlock) (Silberschatz et al., 2009).
 
-Variables Compartidas y Sincronización:
-
-En el paradigma de memoria compartida, los procesos se comunican de forma implícita al leer y escribir en una misma área de memoria. Esta flexibilidad introduce un desafío significativo conocido como el problema de la sección crítica. Según Silberschatz, Galvin y Gagne (2009), cada proceso tiene un segmento de código, llamado sección crítica, en el que accede a recursos compartidos. Para garantizar la consistencia de los datos, es crucial que cuando un proceso esté ejecutando su sección crítica, ningún otro proceso pueda ejecutar la suya. Una solución a este problema debe satisfacer tres requisitos: exclusión mutua, progreso y espera limitada.
-
-Para resolver este problema, se han desarrollado diversas herramientas de sincronización. Una de las más conocidas es el semáforo. Silberschatz et al. (2009) lo definen como una variable entera a la que solo se puede acceder a través de dos operaciones atómicas estándar: wait() (originalmente P) y signal() (originalmente V). A pesar de su utilidad, los semáforos deben usarse con extremo cuidado, ya que un uso incorrecto, como intercambiar el orden de wait() y signal(), puede violar la exclusión mutua o, peor aún, provocar un interbloqueo (deadlock) (Silberschatz et al., 2009).
-
-Para simplificar la tarea del programador y evitar los errores comunes asociados a los semáforos, se han desarrollado abstracciones de más alto nivel como los monitores. Silberschatz et al. (2009) introducen los monitores como una construcción que busca ofrecer un mecanismo conveniente y efectivo para la sincronización, mitigando los errores de temporización difíciles de detectar que pueden surgir con el uso de semáforos.
-
+  Para simplificar la tarea del programador y evitar los errores comunes asociados a los semáforos, se han desarrollado abstracciones de más alto nivel como los monitores. Silberschatz et al. (2009) introducen los monitores como una construcción que busca ofrecer un mecanismo conveniente y efectivo para la sincronización, mitigando los errores de temporización difíciles de detectar que pueden surgir con el uso de semáforos.
 
 ==== Leyes y Límites Teóricos del Rendimiento Paralelo
 
 Para comprender y predecir la ganancia de rendimiento potencial al paralelizar un programa, existen modelos teóricos fundamentales que establecen los límites de la aceleración (speedup) que se puede alcanzar.
 
-Ley de Amdahl:
+- *Ley de Amdahl:*
 
-Según Hennessy y Patterson (2012), la Ley de Amdahl es una fórmula que permite calcular la mejora de rendimiento que se puede obtener al optimizar una porción de un sistema computacional. Su principio fundamental establece que la ganancia de rendimiento global está limitada por la fracción de tiempo que la porción mejorada puede ser utilizada.
+  Según Hennessy y Patterson (2012), la Ley de Amdahl es una fórmula que permite calcular la mejora de rendimiento que se puede obtener al optimizar una porción de un sistema computacional. Su principio fundamental establece que la ganancia de rendimiento global está limitada por la fracción de tiempo que la porción mejorada puede ser utilizada.
 
-El speedup o aceleración se define como la relación entre el tiempo de ejecución sin la mejora y el tiempo de ejecución con la mejora (Hennessy & Patterson, 2012).
+  El speedup o aceleración se define como la relación entre el tiempo de ejecución sin la mejora y el tiempo de ejecución con la mejora (Hennessy & Patterson, 2012).
 
-Para aplicar la ley, se deben considerar dos factores clave:
+  $ italic("Speedup") = italic("Tiempo de ejecución sin la mejora") / italic("Tiempo de ejecución con la mejora") $
 
-Fracción mejorada (Fraction enhanced): La fracción del tiempo de cómputo original que puede aprovechar la mejora. Por ejemplo, si una sección paralelizable de un programa tarda 20 segundos de un total de 60, esta fracción es 20/60.
+  Para aplicar la ley, se deben considerar dos factores clave:
 
-Aceleración de la fracción mejorada (Speedup enhanced): Cuánto más rápida es la porción mejorada. Si un cálculo tardaba 5 segundos y ahora tarda 2, el speedup de esa porción es 5/2.
+  - *Fracción mejorada (Fraction enhanced):* La fracción del tiempo de cómputo original que puede aprovechar la mejora. Por ejemplo, si una sección paralelizable de un programa tarda 20 segundos de un total de 60, esta fracción es 20/60.
 
-Con base en esto, Hennessy y Patterson (2012) establecen la fórmula para la aceleración total (Speedup overall) de la siguiente manera:
+  - *Aceleración de la fracción mejorada (Speedup enhanced):* Cuánto más rápida es la porción mejorada. Si un cálculo tardaba 5 segundos y ahora tarda 2, el speedup de esa porción es 5/2.
 
-Esta ley demuestra que, sin importar cuán rápida se haga la porción paralela, la aceleración total siempre estará limitada por la porción del código que debe ejecutarse de forma secuencial.
+  Con base en esto, Hennessy y Patterson (2012) establecen la fórmula para la aceleración total (Speedup overall) de la siguiente manera:
 
-Ley de Gustafson:
+  $ italic("Speedup")_italic("overall") = 1 / ((1 - italic("Fraction")_italic("enhanced")) + italic("Fraction")_italic("enhanced") / italic("Speedup")_italic("enhanced")) $
 
-La Ley de Amdahl puede presentar un panorama desalentador para el paralelismo. Sin embargo, Pacheco y Malensek (2022) señalan que una de las principales críticas a esta ley es que no toma en consideración el tamaño del problema. Argumentan que, para muchos problemas del mundo real, a medida que el tamaño del problema aumenta, la fracción del programa que es inherentemente secuencial tiende a disminuir.
+  Esta ley demuestra que, sin importar cuán rápida se haga la porción paralela, la aceleración total siempre estará limitada por la porción del código que debe ejecutarse de forma secuencial.
 
+- *Ley de Gustafson:*
+
+  La Ley de Amdahl puede presentar un panorama desalentador para el paralelismo. Sin embargo, Pacheco y Malensek (2022) señalan que una de las principales críticas a esta ley es que no toma en consideración el tamaño del problema. Argumentan que, para muchos problemas del mundo real, a medida que el tamaño del problema aumenta, la fracción del programa que es inherentemente secuencial tiende a disminuir.
 
 === Computación de Alto Rendimiento (HPC)
 
@@ -112,18 +112,18 @@ Go adopta un enfoque inspirado en CSP, donde la composición de tareas y la segu
 
 ==== Componentes y modelo de ejecución
 
-Goroutines: Son la unidad fundamental de concurrencia en Go. A diferencia de los hilos del sistema operativo, las goroutines son extremadamente ligeras y están gestionadas por el runtime; sus stacks comienzan en pocos kilobytes y crecen o se reducen dinámicamente, lo que permite lanzar cientos de miles en un mismo proceso (The Go Programming Language, s. f., Effective Go).
+- *Goroutines:* Son la unidad fundamental de concurrencia en Go. A diferencia de los hilos del sistema operativo, las goroutines son extremadamente ligeras y están gestionadas por el runtime; sus stacks comienzan en pocos kilobytes y crecen o se reducen dinámicamente, lo que permite lanzar cientos de miles en un mismo proceso (The Go Programming Language, s. f., Effective Go).
 
-Scheduler y paralelismo: El runtime multiplexa goroutines sobre hilos del sistema operativo y permite ajustar el grado de paralelismo con GOMAXPROCS, de modo que varias goroutines puedan ejecutarse realmente en paralelo en múltiples CPU lógicas cuando corresponde (The Go Programming Language, s. f., Effective Go).
+- *Scheduler y paralelismo:* El runtime multiplexa goroutines sobre hilos del sistema operativo y permite ajustar el grado de paralelismo con GOMAXPROCS, de modo que varias goroutines puedan ejecutarse realmente en paralelo en múltiples CPU lógicas cuando corresponde (The Go Programming Language, s. f., Effective Go).
 
 
 ==== Comunicación y Sincronización
 
-Canales (channels): Son conductos tipados para enviar/recibir valores entre goroutines y materializan la idea “no te comuniques compartiendo memoria; comparte memoria comunicándote” (The Go Programming Language, s. f., Effective Go). Además, el modelo de memoria de Go establece relaciones happens-before para las operaciones de canal, posibilitando diseños que eviten data races cuando se transfiere la propiedad de los datos entre goroutines (The Go Programming Language, 2022, The Go Memory Model).
+- *Canales (channels):* Son conductos tipados para enviar/recibir valores entre goroutines y materializan la idea “no te comuniques compartiendo memoria; comparte memoria comunicándote” (The Go Programming Language, s. f., Effective Go). Además, el modelo de memoria de Go establece relaciones happens-before para las operaciones de canal, posibilitando diseños que eviten data races cuando se transfiere la propiedad de los datos entre goroutines (The Go Programming Language, 2022, The Go Memory Model).
 
-Primitivas tradicionales en sync: Cuando la coordinación por canales no encaja (p. ej., estado compartido que debe protegerse o secciones críticas muy cortas y frecuentes), Go ofrece primitivas de memoria compartida en sync (The Go Programming Language, s. f., Effective Go; The Go Programming Language, s. f., pkg sync).
+- *Primitivas tradicionales en sync:* Cuando la coordinación por canales no encaja (p. ej., estado compartido que debe protegerse o secciones críticas muy cortas y frecuentes), Go ofrece primitivas de memoria compartida en sync (The Go Programming Language, s. f., Effective Go; The Go Programming Language, s. f., pkg sync).
 Mutex provee exclusión mutua mediante Lock/Unlock. Semánticamente, el desbloqueo de un Mutex sucede-antes del bloqueo posterior del mismo Mutex, garantizando la visibilidad de las escrituras hechas dentro de la sección crítica (The Go Programming Language, 2022, The Go Memory Model; The Go Programming Language, s. f., pkg sync).
- WaitGroup permite esperar a un conjunto de goroutines con el patrón Add/Done/Wait. Un Done() que permite que Wait() retorne sucede-antes del retorno de ese Wait(), por lo que los efectos de las tareas finalizadas son observables después de la espera (The Go Programming Language, 2022, The Go Memory Model; The Go Programming Language, s. f., pkg sync).
+WaitGroup permite esperar a un conjunto de goroutines con el patrón Add/Done/Wait. Un Done() que permite que Wait() retorne sucede-antes del retorno de ese Wait(), por lo que los efectos de las tareas finalizadas son observables después de la espera (The Go Programming Language, 2022, The Go Memory Model; The Go Programming Language, s. f., pkg sync).
 Otras utilidades (RWMutex, Cond, Once, Map, Pool y sync/atomic) cubren casos específicos, pero para los objetivos de esta tesis Mutex y WaitGroup resultan las más relevantes para contrastar con el modelo de canales (The Go Programming Language, s. f., Effective Go; The Go Programming Language, s. f., pkg sync).
 
 ==== Implicancias para el rendimiento y diseño
@@ -147,11 +147,11 @@ Una de las ventajas más significativas de OpenMP, destacada tanto por Pacheco y
 
 En su nivel más fundamental, OpenMP está compuesto por tres elementos principales. Según Dagum y Menon (1998), estos son:
 
-Un conjunto de directivas de compilador (conocidas como pragmas en C/C++ o comentarios especiales en Fortran) que instruyen al compilador sobre cómo paralelizar una sección de código.
+- Un conjunto de directivas de compilador (conocidas como pragmas en C/C++ o comentarios especiales en Fortran) que instruyen al compilador sobre cómo paralelizar una sección de código.
 
-Una librería de rutinas de tiempo de ejecución (runtime) que gestiona los detalles de la ejecución, como la creación y sincronización de hilos.
+- Una librería de rutinas de tiempo de ejecución (runtime) que gestiona los detalles de la ejecución, como la creación y sincronización de hilos.
 
-Variables de entorno que permiten al usuario controlar aspectos de la ejecución del programa paralelo.
+- Variables de entorno que permiten al usuario controlar aspectos de la ejecución del programa paralelo.
 
 El modelo de ejecución que utiliza OpenMP es conocido como fork/join (bifurcación y unión). Dagum y Menon (1998) describen este proceso de la siguiente manera: un programa OpenMP comienza su ejecución como un único hilo de control, conocido como el hilo maestro. Cuando el hilo maestro encuentra una construcción paralela (la fase de fork), crea un equipo de hilos adicionales. La región de código paralela es entonces ejecutada por todos los hilos del equipo de forma simultánea. Al finalizar la región paralela, los hilos se sincronizan en una barrera implícita y se terminan, dejando únicamente al hilo maestro para continuar con la ejecución del resto del programa (la fase de join). Este ciclo de fork/join puede repetirse múltiples veces a lo largo de la ejecución del programa.
 
@@ -159,17 +159,21 @@ Este modelo, como señalan Dagum y Menon (1998), es lo que facilita la paraleliz
 
 OpenMP representa el modelo mental del desarrollador de HPC y el estándar de facto para el paralelismo en sistemas de memoria compartida.
 
-Historia y Propósito: OpenMP (Open Multi-Processing) fue creado a finales de los años 90 por un consorcio de empresas de hardware y software para estandarizar y simplificar la programación paralela en sistemas de memoria compartida. Su propósito es ofrecer una API portable y escalable que permita a los desarrolladores paralelizar código en C, C++ y Fortran de forma incremental y con un esfuerzo mínimo.
+- *Historia y Propósito:* 
 
-Modelo de Ejecución Fork-Join: El modelo de ejecución de OpenMP es el fork-join. Un programa comienza con un único hilo de ejecución (el hilo maestro). Cuando el hilo maestro encuentra una construcción paralela, crea (forks) un equipo de hilos esclavos. La región de código es ejecutada en paralelo por todos los hilos. Al finalizar la región paralela, los hilos esclavos se sincronizan y terminan, y solo el hilo maestro continúa (join). Este modelo está diseñado explícitamente para el paralelismo de bucles y tareas en un espacio de memoria compartido.
+  OpenMP (Open Multi-Processing) fue creado a finales de los años 90 por un consorcio de empresas de hardware y software para estandarizar y simplificar la programación paralela en sistemas de memoria compartida. Su propósito es ofrecer una API portable y escalable que permita a los desarrolladores paralelizar código en C, C++ y Fortran de forma incremental y con un esfuerzo mínimo.
 
-Componentes Fundamentales de OpenMP:
+- *Modelo de Ejecución Fork-Join:*
 
-Los componentes fundamentales de OpenMP operan en conjunto para ofrecer un modelo de paralelismo declarativo de alto nivel, diseñado para abstraer la complejidad inherente a la programación de hilos manual. El pilar de este sistema son las Directivas (Pragmas), que son instrucciones especiales insertadas en el código fuente, como \#pragma omp parallel. Estas directivas no son parte del lenguaje base, sino que actúan como anotaciones que le indican al compilador qué secciones del algoritmo deben ser ejecutadas en paralelo. Su principal ventaja es que permiten al programador expresar la intención de paralelizar sin necesidad de reescribir la lógica fundamental del programa, manteniendo el código limpio y cercano a su versión secuencial. En el contexto de esta tesis, el enfoque se centra en directivas clave como parallel, que crea un equipo de hilos para ejecutar un bloque de código, y for, una directiva de reparto de trabajo (work-sharing) que distribuye automáticamente las iteraciones de un bucle entre los hilos disponibles.
+  El modelo de ejecución de OpenMP es el fork-join. Un programa comienza con un único hilo de ejecución (el hilo maestro). Cuando el hilo maestro encuentra una construcción paralela, crea (forks) un equipo de hilos esclavos. La región de código es ejecutada en paralelo por todos los hilos. Al finalizar la región paralela, los hilos esclavos se sincronizan y terminan, y solo el hilo maestro continúa (join). Este modelo está diseñado explícitamente para el paralelismo de bucles y tareas en un espacio de memoria compartido.
 
-Para refinar y controlar el comportamiento de estas directivas, se utilizan las Cláusulas. Estas actúan como modificadores que se añaden a los pragmas para gestionar el entorno de datos y la ejecución. Por ejemplo, las cláusulas de visibilidad de datos como private y shared son esenciales para evitar condiciones de carrera, permitiendo al programador especificar si una variable debe tener una copia local para cada hilo o si debe ser compartida entre todos. Cláusulas más avanzadas como reduction simplifican operaciones de agregación comunes (sumas, productos, etc.), automatizando la creación de variables privadas para los resultados parciales y su posterior combinación segura en un resultado final. De este modo, las cláusulas ofrecen un control fino y declarativo sobre aspectos complejos del paralelismo sin contaminar la lógica del algoritmo.
+- *Componentes Fundamentales de OpenMP:*
 
-Finalmente, la Librería de Runtime (Runtime Library) complementa el modelo estático de las directivas con un conjunto de funciones que otorgan un control más dinámico y granular sobre el entorno de ejecución paralelo. Funciones como omp\_get\_thread\_num() permiten a un hilo identificar su propio índice dentro del equipo, mientras que omp\_get\_num\_threads() devuelve el número total de hilos activos. Otras, como omp\_set\_num\_threads(), permiten al programa ajustar el número de hilos que se usarán en las siguientes regiones paralelas, facilitando la creación de algoritmos que se adaptan a las condiciones del sistema en tiempo de ejecución. En conjunto, estos tres componentes (directivas, cláusulas y librería de runtime) conforman un ecosistema robusto que ha consolidado a OpenMP como el estándar para el paralelismo de memoria compartida.
+  Los componentes fundamentales de OpenMP operan en conjunto para ofrecer un modelo de paralelismo declarativo de alto nivel, diseñado para abstraer la complejidad inherente a la programación de hilos manual. El pilar de este sistema son las Directivas (Pragmas), que son instrucciones especiales insertadas en el código fuente, como \#pragma omp parallel. Estas directivas no son parte del lenguaje base, sino que actúan como anotaciones que le indican al compilador qué secciones del algoritmo deben ser ejecutadas en paralelo. Su principal ventaja es que permiten al programador expresar la intención de paralelizar sin necesidad de reescribir la lógica fundamental del programa, manteniendo el código limpio y cercano a su versión secuencial. En el contexto de esta tesis, el enfoque se centra en directivas clave como parallel, que crea un equipo de hilos para ejecutar un bloque de código, y for, una directiva de reparto de trabajo (work-sharing) que distribuye automáticamente las iteraciones de un bucle entre los hilos disponibles.
+
+  Para refinar y controlar el comportamiento de estas directivas, se utilizan las Cláusulas. Estas actúan como modificadores que se añaden a los pragmas para gestionar el entorno de datos y la ejecución. Por ejemplo, las cláusulas de visibilidad de datos como private y shared son esenciales para evitar condiciones de carrera, permitiendo al programador especificar si una variable debe tener una copia local para cada hilo o si debe ser compartida entre todos. Cláusulas más avanzadas como reduction simplifican operaciones de agregación comunes (sumas, productos, etc.), automatizando la creación de variables privadas para los resultados parciales y su posterior combinación segura en un resultado final. De este modo, las cláusulas ofrecen un control fino y declarativo sobre aspectos complejos del paralelismo sin contaminar la lógica del algoritmo.
+
+  Finalmente, la Librería de Runtime (Runtime Library) complementa el modelo estático de las directivas con un conjunto de funciones que otorgan un control más dinámico y granular sobre el entorno de ejecución paralelo. Funciones como omp\_get\_thread\_num() permiten a un hilo identificar su propio índice dentro del equipo, mientras que omp\_get\_num\_threads() devuelve el número total de hilos activos. Otras, como omp\_set\_num\_threads(), permiten al programa ajustar el número de hilos que se usarán en las siguientes regiones paralelas, facilitando la creación de algoritmos que se adaptan a las condiciones del sistema en tiempo de ejecución. En conjunto, estos tres componentes (directivas, cláusulas y librería de runtime) conforman un ecosistema robusto que ha consolidado a OpenMP como el estándar para el paralelismo de memoria compartida.
 
 
 === Fundamentos Conceptuales de la Problemática

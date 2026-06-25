@@ -15,26 +15,26 @@ El objetivo de esta revisión sistemática es realizar un análisis exhaustivo y
 
 Para cumplir con este objetivo, se llevará a cabo una revisión sistemática de la literatura del estado del arte disponible en bases de datos académicas, conferencias relevantes y repositorios. La revisión se centrará en recopilar información sobre los siguientes objetivos de revisión:
 
-Analizar las limitaciones de los modelos de concurrencia nativos en lenguajes modernos y los principios fundamentales de los paradigmas declarativos (como la separación de incumbencias) que buscan resolverlas.
+- Analizar las limitaciones de los modelos de concurrencia nativos en lenguajes modernos y los principios fundamentales de los paradigmas declarativos (como la separación de incumbencias) que buscan resolverlas.
 
-Examinar las propuestas de implementación existentes, con un enfoque en las arquitecturas de compilador (source-to-source) y librerías de runtime, y sintetizar los retos (sintácticos, semánticos y de rendimiento) reportados en la literatura.
+- Examinar las propuestas de implementación existentes, con un enfoque en las arquitecturas de compilador (source-to-source) y librerías de runtime, y sintetizar los retos (sintácticos, semánticos y de rendimiento) reportados en la literatura.
 
-Identificar las metodologías de evaluación (métricas y benchmarks) utilizadas para validar estas implementaciones y consolidar los beneficios reportados en términos de rendimiento, productividad y mantenibilidad del código.
+- Identificar las metodologías de evaluación (métricas y benchmarks) utilizadas para validar estas implementaciones y consolidar los beneficios reportados en términos de rendimiento, productividad y mantenibilidad del código.
 
 
 == Preguntas de revisión
 
-P1: ¿Cuáles son las limitaciones de los lenguajes de propósito general modernos para problemas de paralelismo de cómputo intensivo?
+*P1:* ¿Cuáles son las limitaciones de los lenguajes de propósito general modernos para problemas de paralelismo de cómputo intensivo?
 
-P2: ¿Qué principios y abstracciones fundamentales proveen los paradigmas de paralelismo declarativo para evitar la fricción semántico-sintáctica en lenguajes de propósito general modernos?
+*P2:* ¿Qué principios y abstracciones fundamentales proveen los paradigmas de paralelismo declarativo para evitar la fricción semántico-sintáctica en lenguajes de propósito general modernos?
 
-P3: ¿Qué propuestas existen en la literatura para implementar paralelismo declarativo en lenguajes de propósito general modernos?
+*P3:* ¿Qué propuestas existen en la literatura para implementar paralelismo declarativo en lenguajes de propósito general modernos?
 
-P4: ¿Qué retos (sintácticos, semánticos, de compilación o de rendimiento) identifica la literatura al intentar implementar paradigmas de paralelismo de alto nivel en lenguajes de propósito general modernos?
+*P4:* ¿Qué retos (sintácticos, semánticos, de compilación o de rendimiento) identifica la literatura al intentar implementar paradigmas de paralelismo de alto nivel en lenguajes de propósito general modernos?
 
-P5: ¿Qué conjunto de pruebas y métricas tanto de rendimiento como de expresividad se usan en la literatura para evaluar abstracciones de paralelismo de alto nivel en lenguajes de propósito general modernos?
+*P5:* ¿Qué conjunto de pruebas y métricas tanto de rendimiento como de expresividad se usan en la literatura para evaluar abstracciones de paralelismo de alto nivel en lenguajes de propósito general modernos?
 
-P6: ¿Qué beneficios y ventajas potenciales se identifican en la literatura al implementar estas abstracciones de paralelismo de alto nivel en lenguajes de propósito general modernos?
+*P6:* ¿Qué beneficios y ventajas potenciales se identifican en la literatura al implementar estas abstracciones de paralelismo de alto nivel en lenguajes de propósito general modernos?
 
 
 == Estrategia de búsqueda
