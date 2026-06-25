@@ -42,71 +42,71 @@ Para cumplir con este objetivo, se llevará a cabo una revisión sistemática de
 
 === Motores de búsqueda a usar
 
-Scopus: Es una base de datos de resúmenes y citas de literatura científica revisada por pares, que abarca revistas, libros y actas de conferencias. Se caracteriza por su cobertura multidisciplinaria y por indexar trabajos de una gran diversidad de editoriales, siendo una herramienta fundamental para el análisis de citas y la investigación científica a gran escala (Elsevier, s.f.).
+- *Scopus:* Es una base de datos de resúmenes y citas de literatura científica revisada por pares, que abarca revistas, libros y actas de conferencias. Se caracteriza por su cobertura multidisciplinaria y por indexar trabajos de una gran diversidad de editoriales, siendo una herramienta fundamental para el análisis de citas y la investigación científica a gran escala (Elsevier, s.f.).
 
-IEEE Xplore: Es la biblioteca digital del Institute of Electrical and Electronics Engineers (IEEE), una fuente indispensable para el descubrimiento y acceso a literatura técnica en ingeniería eléctrica, ciencias de la computación y electrónica. Ofrece acceso a artículos de revistas, actas de conferencias y estándares técnicos de alta calidad que son fundamentales para la innovación y la investigación en tecnología (IEEE, s.f.).
+- *IEEE Xplore:* Es la biblioteca digital del Institute of Electrical and Electronics Engineers (IEEE), una fuente indispensable para el descubrimiento y acceso a literatura técnica en ingeniería eléctrica, ciencias de la computación y electrónica. Ofrece acceso a artículos de revistas, actas de conferencias y estándares técnicos de alta calidad que son fundamentales para la innovación y la investigación en tecnología (IEEE, s.f.).
 
 
 === Cadenas de búsqueda a usar
 
 Para la construcción de las cadenas de búsqueda se utilizaron los siguientes keywords, agrupados por pilar conceptual, que se derivan de las preguntas de investigación especificadas:
 
-Pilar 1 - Lenguajes de Programación: Se enfoca en los lenguajes de propósito general modernos que son objeto del estudio. Se usa OR porque un artículo puede tratar sobre cualquiera de estos lenguajes.
+- *Pilar 1 - Lenguajes de Programación:* Se enfoca en los lenguajes de propósito general modernos que son objeto del estudio. Se usa OR porque un artículo puede tratar sobre cualquiera de estos lenguajes.
 
-Python
+  - Python
 
-Java
+  - Java
 
-Go / Golang
+  - Go / Golang
 
-Rust
+  - Rust
 
-Zig
+  - Zig
 
-Modern programming language
+  - Modern programming language
 
-Pilar 2 - Paradigma de Programación (Paradigm): Describe el enfoque declarativo o basado en directivas para el paralelismo. Son términos intercambiables en este contexto, por lo que se unen con OR.
+- *Pilar 2 - Paradigma de Programación (Paradigm):* Describe el enfoque declarativo o basado en directivas para el paralelismo. Son términos intercambiables en este contexto, por lo que se unen con OR.
 
-Pragma
+  - Pragma
 
-Directive
+  - Directive
 
-Declarative
+  - Declarative
 
-Pilar 3 - Dominio de Aplicación: Define el campo de la computación de alto rendimiento. Se usa OR para incluir términos relacionados.
+- *Pilar 3 - Dominio de Aplicación:* Define el campo de la computación de alto rendimiento. Se usa OR para incluir términos relacionados.
 
-Parallelism / Parallel
+  - Parallelism / Parallel
 
-HPC (High-Performance Computing)
+  - HPC (High-Performance Computing)
 
-Pilar 4 - Implementación: Agrupa los términos que describen la naturaleza de la solución propuesta (una librería, un compilador, etc.), así como estándares de referencia. Se unen con OR para capturar la diversidad de enfoques.
+- *Pilar 4 - Implementación:* Agrupa los términos que describen la naturaleza de la solución propuesta (una librería, un compilador, etc.), así como estándares de referencia. Se unen con OR para capturar la diversidad de enfoques.
 
-OpenMP
+  - OpenMP
 
-MPI
+  - MPI
 
-Compiler / Compiler extension
+  - Compiler / Compiler extension
 
-Library
+  - Library
 
-Framework
+  - Framework
 
-Prototype
+  - Prototype
 
-Pure implementation
+  - Pure implementation
 
-Language support
+  - Language support
 
-Búsquedas Específicas: Adicionalmente, se incluyeron nombres de implementaciones conocidas como OMP4Py y JOMP para asegurar la recuperación de trabajos altamente relevantes.
+- *Búsquedas Específicas:* Adicionalmente, se incluyeron nombres de implementaciones conocidas como OMP4Py y JOMP para asegurar la recuperación de trabajos altamente relevantes.
 
 A partir de los keywords definidos, se construyó una cadena de búsqueda unificada y adaptada a la sintaxis de cada motor de búsqueda seleccionado. En la tabla que se presenta a continuación, se muestran las cadenas finales utilizadas en cada plataforma.
 
 #figure(
   table(
-    columns: 3,
+    columns: (1.25fr,2fr,0.75fr),
     stroke: 0.5pt,
     fill: (col, row) => if row == 0 { luma(230) },
-    align: left,
+    align: (col, row) => if row == 0 { center + horizon } else { left + top },
     [*Motor de búsqueda*], [*Cadena de búsqueda*], [*Cantidad de documentos*],
     [Scopus], [TITLE-ABS-KEY ( ( "OMP4Py" OR "JOMP" OR ( "Zig" AND "OpenMP" ) OR ( "Rust" AND "OpenMP" ) ) OR ( ( "Python" OR "Java" OR "Zig" OR "Rust" OR "Go" OR "Golang" OR "modern programming language" ) AND ( "pragma" OR "directive" OR "declarative" ) AND ( "parallelism" OR "parallel" OR "hpc" ) AND ( "pure implementation" OR "library" OR "compiler" OR "compiler extension" OR "framework" OR "prototype" OR "language support" OR "OpenMP" OR "MPI" ) AND NOT ( "GPU" OR "CUDA" OR "IO" OR "I/O" ) ) )], [112],
     [IEEE Xplore], [(("OMP4Py" OR "JOMP" OR ("Zig" AND "OpenMP") OR ("Rust" AND "OpenMP")) OR (("Python" OR "Java" OR "Zig" OR "Rust" OR "Go" OR "Golang" OR "modern programming language") AND ("pragma" OR "directive" OR "declarative") AND ("parallelism" OR "parallel" OR "hpc") AND ("pure implementation" OR "library" OR "compiler" OR "compiler extension" OR "framework" OR "prototype" OR "language support" OR "OpenMP" OR "MPI") AND NOT ("GPU" OR "CUDA" OR "IO" OR "I/O")))], [27],
@@ -118,46 +118,46 @@ A partir de los keywords definidos, se construyó una cadena de búsqueda unific
 
 === Criterios de inclusión y exclusión
 
-Criterios de inclusión:
+*Criterios de inclusión:*
 
-Especificidad Temática: Se incluirán estudios que propongan, implementen o analicen sistemas de paralelismo declarativo o basado en directivas, con un enfoque principal en modelos tipo OpenMP. Se considerarán trabajos aplicados a lenguajes de propósito general modernos (ej. Go, Rust, Zig, etc.) así como trabajos fundacionales en lenguajes de sistemas como C, C++ y Java, que son cruciales para entender la evolución del paradigma.
+- *Especificidad Temática:* Se incluirán estudios que propongan, implementen o analicen sistemas de paralelismo declarativo o basado en directivas, con un enfoque principal en modelos tipo OpenMP. Se considerarán trabajos aplicados a lenguajes de propósito general modernos (ej. Go, Rust, Zig, etc.) así como trabajos fundacionales en lenguajes de sistemas como C, C++ y Java, que son cruciales para entender la evolución del paradigma.
 
-Enfoque de la Investigación: Se priorizará investigaciones que detallan la arquitectura de compiladores (especialmente source-to-source), librerías de runtime, metodologías de implementación, o herramientas para el análisis de rendimiento de dichos paradigmas.
+- *Enfoque de la Investigación:* Se priorizará investigaciones que detallan la arquitectura de compiladores (especialmente source-to-source), librerías de runtime, metodologías de implementación, o herramientas para el análisis de rendimiento de dichos paradigmas.
 
-Ventana Temporal: No se aplicará una ventana temporal estricta para permitir la inclusión de trabajos pioneros y seminales que establecieron las bases del área. Sin embargo, se dará prioridad a trabajos publicados en la última década que aborden los desafíos en lenguajes más modernos.
+- *Ventana Temporal:* No se aplicará una ventana temporal estricta para permitir la inclusión de trabajos pioneros y seminales que establecieron las bases del área. Sin embargo, se dará prioridad a trabajos publicados en la última década que aborden los desafíos en lenguajes más modernos.
 
-Idioma: Se incluirán estudios escritos en inglés y español, dado que son los idiomas predominantes en la literatura científica de esta área.
+- *Idioma:* Se incluirán estudios escritos en inglés y español, dado que son los idiomas predominantes en la literatura científica de esta área.
 
-Criterios de exclusión:
+*Criterios de exclusión:*
 
-Enfoque Temático No Relacionado: Se excluirán los estudios cuyo enfoque principal sea de un área diferente al de las ciencias de la computación o sistemas computacionales.
+- *Enfoque Temático No Relacionado:* Se excluirán los estudios cuyo enfoque principal sea de un área diferente al de las ciencias de la computación o sistemas computacionales.
 
-Enfoque centrado en GPUs y CUDA: Se excluirán los artículos enfocados en el paralelismo masivo de datos de GPUs y CUDA por tratarse de un paradigma significativamente diferente al investigado.
+- *Enfoque centrado en GPUs y CUDA:* Se excluirán los artículos enfocados en el paralelismo masivo de datos de GPUs y CUDA por tratarse de un paradigma significativamente diferente al investigado.
 
-Accesibilidad: Se excluirán los trabajos cuyo texto completo no sea accesible a través de las bases de datos académicas o por medios públicos.
+- *Accesibilidad:* Se excluirán los trabajos cuyo texto completo no sea accesible a través de las bases de datos académicas o por medios públicos.
 
 Para refinar la selección de documentos, se aplicó un proceso de filtrado en dos fases sobre los resultados brutos obtenidos de cada motor de búsqueda.
 
-Fase 1: Eliminación de duplicados
+- *Fase 1: Eliminación de duplicados*
 
-Antes de aplicar cualquier criterio de inclusión o exclusión, se realizó una depuración inicial para eliminar duplicados entre Scopus e IEEE Xplore. Para ello se emplearon gestores de referencias, garantizando que cada estudio apareciera una sola vez en el corpus preliminar.
+  Antes de aplicar cualquier criterio de inclusión o exclusión, se realizó una depuración inicial para eliminar duplicados entre Scopus e IEEE Xplore. Para ello se emplearon gestores de referencias, garantizando que cada estudio apareciera una sola vez en el corpus preliminar.
 
-Fase 2: Revisión por título y resumen
+- *Fase 2: Revisión por título y resumen*
 
-Después de eliminar duplicados, se examinaron el título y el resumen de cada artículo recuperado. En esta fase se aplicaron los criterios de inclusión y exclusión para descartar rápidamente los trabajos evidentemente irrelevantes, como aquellos con enfoques temáticos no relacionados o centrados exclusivamente en GPUs y CUDA.
+  Después de eliminar duplicados, se examinaron el título y el resumen de cada artículo recuperado. En esta fase se aplicaron los criterios de inclusión y exclusión para descartar rápidamente los trabajos evidentemente irrelevantes, como aquellos con enfoques temáticos no relacionados o centrados exclusivamente en GPUs y CUDA.
 
-Fase 3: Lectura de texto completo
+- *Fase 3: Lectura de texto completo*
 
-Los artículos que superaron la revisión inicial fueron sometidos a una lectura exhaustiva del texto completo. En esta etapa se verificó si cada estudio cumplía rigurosamente con los criterios establecidos, prestando especial atención al enfoque de la investigación (p. ej., descripción de arquitectura del compilador, metodologías de evaluación) y la accesibilidad del documento.
+  Los artículos que superaron la revisión inicial fueron sometidos a una lectura exhaustiva del texto completo. En esta etapa se verificó si cada estudio cumplía rigurosamente con los criterios establecidos, prestando especial atención al enfoque de la investigación (p. ej., descripción de arquitectura del compilador, metodologías de evaluación) y la accesibilidad del documento.
 
-El resultado de este proceso de filtrado es el conjunto final de documentos sin duplicados para la extracción de datos, cuya cantidad se detalla en la siguiente tabla.
+  El resultado de este proceso de filtrado es el conjunto final de documentos sin duplicados para la extracción de datos, cuya cantidad se detalla en la siguiente tabla.
 
 #figure(
   table(
-    columns: 3,
+    columns: (1.25fr,2fr,0.75fr),
     stroke: 0.5pt,
     fill: (col, row) => if row == 0 { luma(230) },
-    align: left,
+    align: (col, row) => if row == 0 { center + horizon } else { left + top },
     [*Motor de búsqueda*], [*Cadena de búsqueda*], [*Cantidad de documentos*],
     [Scopus], [TITLE-ABS-KEY ( ( "OMP4Py" OR "JOMP" OR ( "Zig" AND "OpenMP" ) OR ( "Rust" AND "OpenMP" ) ) OR ( ( "Python" OR "Java" OR "Zig" OR "Rust" OR "Go" OR "Golang" OR "modern programming language" ) AND ( "pragma" OR "directive" OR "declarative" ) AND ( "parallelism" OR "parallel" OR "hpc" ) AND ( "pure implementation" OR "library" OR "compiler" OR "compiler extension" OR "framework" OR "prototype" OR "language support" OR "OpenMP" OR "MPI" ) AND NOT ( "GPU" OR "CUDA" OR "IO" OR "I/O" ) ) )], [14],
     [IEEE Xplore], [(("OMP4Py" OR "JOMP" OR ("Zig" AND "OpenMP") OR ("Rust" AND "OpenMP")) OR (("Python" OR "Java" OR "Zig" OR "Rust" OR "Go" OR "Golang" OR "modern programming language") AND ("pragma" OR "directive" OR "declarative") AND ("parallelism" OR "parallel" OR "hpc") AND ("pure implementation" OR "library" OR "compiler" OR "compiler extension" OR "framework" OR "prototype" OR "language support" OR "OpenMP" OR "MPI") AND NOT ("GPU" OR "CUDA" OR "IO" OR "I/O")))], [7],
@@ -177,29 +177,29 @@ Después de aplicar los criterios de inclusión y exclusión, se seleccionaron 1
 
 #figure(
   table(
-    columns: 2,
+    columns: (0.5fr,3fr),
     stroke: 0.5pt,
     fill: (col, row) => if row == 0 { luma(230) },
-    align: left,
+    align: (col, row) => if row == 0 { center + horizon } else { left + top },
     [*Nro. de Artículo*], [*Referencia*],
     [1], [Piñeiro, C., & Pichel, J. C. (2026). OMP4Py: A pure Python implementation of OpenMP. Future Generation Computer Systems, 175, Article 108035. https:\/\/doi.org/10.1016/j.future.2025.108035],
     [2], [Perugini, A., & Kosmidis, L. (2025). Evaluation of the parallel features of Rust for space systems. Open Access Series in Informatics (OASIcs), 127, 5:1-5:20. https:\/\/doi.org/10.4230/OASIcs.PARMA-DITAM.2025.5],
-    [3], [Fan, W., He, T., Lai, L., Li, X., Li, Y., Li, Z., Qian, Z., Tian, C., Wang, L., Xu, J., Yao, Y., Yin, Q., Yu, W., Zhou, J., Zhu, D., & Zhu, R. (2021). GraphScope: A unified engine for big graph processing. Proceedings of the VLDB Endowment, 14(12), 2879–2892. https:\/\/doi.org/10.14778/3476311.3476369],
-    [4], [Fan, X., Mehrabi, M., Sinnen, O., et al. (2017). Supporting enhanced exception handling with OpenMP in object-oriented languages. International Journal of Parallel Programming, 45, 1366–1389. https:\/\/doi.org/10.1007/s10766-016-0474-x],
-    [5], [Yoshida, A., Kamiyama, A., & Oka, H. (2017). A task-driven parallel code generation scheme for coarse grain parallelization on Android platform. Journal of Information Processing, 25, 426–437. https:\/\/doi.org/10.2197/ipsjjip.25.426],
-    [6], [Utting, M., Weng, M.-H., & Cleary, J. G. (2014). The JStar language philosophy. Parallel Computing, 40(2), 35–50. https:\/\/doi.org/10.1016/j.parco.2013.11.004],
-    [7], [Vikas, Giacaman, N., & Sinnen, O. (2014). Multiprocessing with GUI-awareness using OpenMP-like directives in Java. Parallel Computing, 40(2), 69–89. https:\/\/doi.org/10.1016/j.parco.2013.11.005],
-    [8], [Yoshida, A., Ochi, Y., & Yamanouchi, N. (2014). Parallel Java code generation for layer-unified coarse grain task parallel processing. IPSJ Online Transactions, 7, 168–178. https:\/\/doi.org/10.2197/ipsjtrans.7.168],
-    [9], [Xiaowen, L. (2014). Research on multi-core PC parallel computation based on OpenMP. International Journal of Multimedia and Ubiquitous Engineering, 9(7), 131–140. https:\/\/doi.org/10.14257/ijmue.2014.9.7.12],
+    [3], [Fan, W., He, T., Lai, L., Li, X., Li, Y., Li, Z., Qian, Z., Tian, C., Wang, L., Xu, J., Yao, Y., Yin, Q., Yu, W., Zhou, J., Zhu, D., & Zhu, R. (2021). GraphScope: A unified engine for big graph processing. Proceedings of the VLDB Endowment, 14(12), 2879-2892. https:\/\/doi.org/10.14778/3476311.3476369],
+    [4], [Fan, X., Mehrabi, M., Sinnen, O., et al. (2017). Supporting enhanced exception handling with OpenMP in object-oriented languages. International Journal of Parallel Programming, 45, 1366-1389. https:\/\/doi.org/10.1007/s10766-016-0474-x],
+    [5], [Yoshida, A., Kamiyama, A., & Oka, H. (2017). A task-driven parallel code generation scheme for coarse grain parallelization on Android platform. Journal of Information Processing, 25, 426-437. https:\/\/doi.org/10.2197/ipsjjip.25.426],
+    [6], [Utting, M., Weng, M.-H., & Cleary, J. G. (2014). The JStar language philosophy. Parallel Computing, 40(2), 35-50. https:\/\/doi.org/10.1016/j.parco.2013.11.004],
+    [7], [Vikas, Giacaman, N., & Sinnen, O. (2014). Multiprocessing with GUI-awareness using OpenMP-like directives in Java. Parallel Computing, 40(2), 69-89. https:\/\/doi.org/10.1016/j.parco.2013.11.005],
+    [8], [Yoshida, A., Ochi, Y., & Yamanouchi, N. (2014). Parallel Java code generation for layer-unified coarse grain task parallel processing. IPSJ Online Transactions, 7, 168-178. https:\/\/doi.org/10.2197/ipsjtrans.7.168],
+    [9], [Xiaowen, L. (2014). Research on multi-core PC parallel computation based on OpenMP. International Journal of Multimedia and Ubiquitous Engineering, 9(7), 131-140. https:\/\/doi.org/10.14257/ijmue.2014.9.7.12],
     [10], [Senghor, A., & Konate, K. (2012). A Java hybrid compiler for shared memory parallel programming. En 2012 13th International Conference on Parallel and Distributed Computing, Applications and Technologies (pp. 131-136). IEEE. https:\/\/doi.org/10.1109/PDCAT.2012.21],
     [11], [Kacs, D., Lee, J., Zarins, J., & Brown, N. (2024). Pragma driven shared memory parallelism in Zig by supporting OpenMP loop directives. En SC24-W: Workshops of the International Conference for High Performance Computing, Networking, Storage and Analysis (pp. 930-938). IEEE. https:\/\/doi.org/10.1109/SCW63240.2024.00132],
     [12], [Alexandrov, A., Krastev, G., & Markl, V. (2019). Representations and optimizations for embedded parallel dataflow languages. ACM Transactions on Database Systems, 44(1), Article 4. https:\/\/doi.org/10.1145/3281629],
     [13], [Fernandez, R. C., Garefalakis, P., & Pietzuch, P. (2016). Java2SDG: Stateful big data processing for the masses. En 2016 IEEE 32nd International Conference on Data Engineering (ICDE) (pp. 1390-1393). IEEE. https:\/\/doi.org/10.1109/ICDE.2016.7498352],
     [14], [Senghor, A., & Konate, K. (2012). Transforming an incorrectly synchronized parallel program into correctly synchronized and well optimized program. En 2012 2nd IEEE International Conference on Parallel, Distributed and Grid Computing (pp. 633-638). IEEE. https:\/\/doi.org/10.1109/PDGC.2012.6449894],
-    [15], [Powers, F. E., Jr., & Alaghband, G. (2007). The Hydra parallel programming system. Concurrency and Computation: Practice and Experience, 20, 1–27. https:\/\/doi.org/10.1002/cpe.1205],
+    [15], [Powers, F. E., Jr., & Alaghband, G. (2007). The Hydra parallel programming system. Concurrency and Computation: Practice and Experience, 20, 1-27. https:\/\/doi.org/10.1002/cpe.1205],
     [16], [Guitart, J., Torres, J., Ayguadé, E., & Bull, J. M. (2001). Performance analysis tools for parallel Java applications on shared-memory systems. En International Conference on Parallel Processing, 2001 (pp. 357-364). IEEE. https:\/\/doi.org/10.1109/ICPP.2001.952081],
-    [17], [Kambites, M. E., Obdržálek, J., & Bull, J. M. (2001). An OpenMP-like interface for parallel programming in Java. Concurrency and Computation: Practice and Experience, 13, 793–814. https:\/\/doi.org/10.1002/cpe.579],
-    [18], [Brunschen, C., & Brorsson, M. (2000). OdinMP/CCp—a portable implementation of OpenMP for C. Concurrency: Practice and Experience, 12(12), 1193–1203. https:\/\/doi.org/10.1002/1096-9128(200010)12:12\<1193::AID-CPE527\>3.0.CO;2-U],
+    [17], [Kambites, M. E., Obdržálek, J., & Bull, J. M. (2001). An OpenMP-like interface for parallel programming in Java. Concurrency and Computation: Practice and Experience, 13, 793-814. https:\/\/doi.org/10.1002/cpe.579],
+    [18], [Brunschen, C., & Brorsson, M. (2000). OdinMP/CCp—a portable implementation of OpenMP for C. Concurrency: Practice and Experience, 12(12), 1193-1203. https:\/\/doi.org/10.1002/1096-9128(200010)12:12\<1193::AID-CPE527\>3.0.CO;2-U],
     [19], [Ramirez, R., & Santosa, A. (2003). A methodology for concurrent and distributed Java applications. En Proceedings International Parallel and Distributed Processing Symposium. IEEE. https:\/\/doi.org/10.1109/IPDPS.2003.1213264],
   ),
   caption: [Lista de documentos encontrados],
@@ -213,10 +213,11 @@ Aunque no fue recuperado por las cadenas automáticas iniciales, se incluye el t
 
 #figure(
   table(
-    columns: 3,
+    columns: (1fr,1.75fr,1fr),
     stroke: 0.5pt,
     fill: (col, row) => if row == 0 { luma(230) },
-    align: left,
+    align: (col, row) => if row == 0 { center + horizon } else { left + top },
+
     [*Campo*], [*Descripción*], [*Pregunta*],
     [N° de Artículo], [Identificador del artículo.], [General],
     [Título del artículo], [Título del artículo publicado.], [General],
@@ -261,17 +262,17 @@ El principio más fundamental y recurrente es la separación de incumbencias. Es
 
 Para evitar la fricción sintáctica, estos paradigmas se integran en el lenguaje de forma natural y poco intrusiva. Las estrategias clave incluyen:
 
-Uso de directivas en comentarios o pragmas: Un enfoque clásico, popularizado por OpenMP, es implementar las directivas como comentarios (ej. \/\/omp) o pragmas que son ignorados por los compiladores estándar (Vikas et al., 2014; Kambites et al., 2001). Esto asegura que el código siga siendo una extensión no fundamental del lenguaje y mantenga su compilación y ejecución secuencial, facilitando la portabilidad y el desarrollo incremental (Brunschen & Brorsson, 2000).
+- *Uso de directivas en comentarios o pragmas:* Un enfoque clásico, popularizado por OpenMP, es implementar las directivas como comentarios (ej. \/\/omp) o pragmas que son ignorados por los compiladores estándar (Vikas et al., 2014; Kambites et al., 2001). Esto asegura que el código siga siendo una extensión no fundamental del lenguaje y mantenga su compilación y ejecución secuencial, facilitando la portabilidad y el desarrollo incremental (Brunschen & Brorsson, 2000).
 
-Aprovechamiento de la sintaxis nativa: Los enfoques más modernos utilizan características idiomáticas del propio lenguaje para una integración más fluida. Esto incluye el uso de decoradores y gestores de contexto en Python (Piñeiro & Pichel, 2026), anotaciones en Java (Castro Fernandez et al., 2016), o la simple sustitución de iteradores estándar por sus equivalentes paralelos en Rust (Perugini & Kosmidis, 2025).
+- *Aprovechamiento de la sintaxis nativa:* Los enfoques más modernos utilizan características idiomáticas del propio lenguaje para una integración más fluida. Esto incluye el uso de decoradores y gestores de contexto en Python (Piñeiro & Pichel, 2026), anotaciones en Java (Castro Fernandez et al., 2016), o la simple sustitución de iteradores estándar por sus equivalentes paralelos en Rust (Perugini & Kosmidis, 2025).
 
 Para evitar la fricción semántica, el paradigma reemplaza la gestión manual y de bajo nivel de hilos por abstracciones de alto nivel. En lugar de manejar hilos directamente, el programador trabaja con conceptos como:
 
-Iteradores paralelos que se encargan de la partición de datos (Perugini & Kosmidis, 2025).
+- Iteradores paralelos que se encargan de la partición de datos (Perugini & Kosmidis, 2025).
 
-Cláusulas declarativas que definen el alcance de los datos (private, reduction) y las estrategias de planificación (schedule) (Xiaowen, 2014).
+- Cláusulas declarativas que definen el alcance de los datos (private, reduction) y las estrategias de planificación (schedule) (Xiaowen, 2014).
 
-Unidades de trabajo atómicas o dependencias de datos entre tareas (Powers & Alaghband, 2007; Yoshida et al., 2017).
+- Unidades de trabajo atómicas o dependencias de datos entre tareas (Powers & Alaghband, 2007; Yoshida et al., 2017).
 
 Mediante estas abstracciones, la responsabilidad de la implementación compleja, como la división de la carga de trabajo, la planificación de hilos y la sincronización, se delega completamente a la biblioteca o al runtime, simplificando drásticamente el modelo mental del programador (Perugini & Kosmidis, 2025).
 
@@ -298,17 +299,17 @@ En el ámbito del rendimiento, los desafíos van más allá de la simple paralel
 
 La selección de benchmarks se divide principalmente en tres categorías:
 
-Algoritmos Numéricos y de Computación Científica: Esta es la categoría más común. Se emplean suites de benchmarks estandarizadas como NAS Parallel Benchmarks (NPB) (Kacs et al., 2024) y Java Grande Forum Benchmark Suite (Yoshida et al., 2017; Vikas et al., 2014). Además, es frecuente el uso de algoritmos individuales emblemáticos como la Transformada Rápida de Fourier (FFT) (Piñeiro & Pichel, 2026; Perugini & Kosmidis, 2025; Xiaowen, 2014), la multiplicación de matrices (Perugini & Kosmidis, 2025; Utting et al., 2014; Madridejos Zamorano, 2015), la descomposición LU (Piñeiro & Pichel, 2026) y otros cálculos como Montecarlo, Raytracer y la estimación de Pi (Yoshida et al., 2017; Piñeiro & Pichel, 2026).
+- *Algoritmos Numéricos y de Computación Científica:* Esta es la categoría más común. Se emplean suites de benchmarks estandarizadas como NAS Parallel Benchmarks (NPB) (Kacs et al., 2024) y Java Grande Forum Benchmark Suite (Yoshida et al., 2017; Vikas et al., 2014). Además, es frecuente el uso de algoritmos individuales emblemáticos como la Transformada Rápida de Fourier (FFT) (Piñeiro & Pichel, 2026; Perugini & Kosmidis, 2025; Xiaowen, 2014), la multiplicación de matrices (Perugini & Kosmidis, 2025; Utting et al., 2014; Madridejos Zamorano, 2015), la descomposición LU (Piñeiro & Pichel, 2026) y otros cálculos como Montecarlo, Raytracer y la estimación de Pi (Yoshida et al., 2017; Piñeiro & Pichel, 2026).
 
-Aplicaciones de Procesamiento de Datos y del Mundo Real: Para evaluar la aplicabilidad en dominios no puramente científicos, se utilizan benchmarks industriales como LDBC y aplicaciones de producción reales para tareas como monitoreo de ciberseguridad y detección de fraude (Fan et al., 2021). También se incluyen algoritmos de análisis de datos como k-means clustering (Alexandrov et al., 2019), Wordcount (Piñeiro & Pichel, 2026), regresión logística y filtrado colaborativo (Castro Fernandez et al., 2016), así como aplicaciones a medida con interfaces gráficas (GUI) como generadores de fractales y web crawlers para casos de uso especializados (Vikas et al., 2014).
+- *Aplicaciones de Procesamiento de Datos y del Mundo Real:* Para evaluar la aplicabilidad en dominios no puramente científicos, se utilizan benchmarks industriales como LDBC y aplicaciones de producción reales para tareas como monitoreo de ciberseguridad y detección de fraude (Fan et al., 2021). También se incluyen algoritmos de análisis de datos como k-means clustering (Alexandrov et al., 2019), Wordcount (Piñeiro & Pichel, 2026), regresión logística y filtrado colaborativo (Castro Fernandez et al., 2016), así como aplicaciones a medida con interfaces gráficas (GUI) como generadores de fractales y web crawlers para casos de uso especializados (Vikas et al., 2014).
 
-Micro-benchmarks: Un tercer enfoque utiliza pruebas pequeñas y específicas para aislar y medir aspectos concretos del sistema, como la sobrecarga (overhead) pura de las directivas, el costo de la sincronización o el impacto de las herramientas de análisis (Fan et al., 2016; Guitart et al., 2001; Kambites et al., 2001).
+- *Micro-benchmarks:* Un tercer enfoque utiliza pruebas pequeñas y específicas para aislar y medir aspectos concretos del sistema, como la sobrecarga (overhead) pura de las directivas, el costo de la sincronización o el impacto de las herramientas de análisis (Fan et al., 2016; Guitart et al., 2001; Kambites et al., 2001).
 
 Las métricas se pueden clasificar en cuantitativas para el rendimiento y cualitativas para las características del lenguaje.
 
-Métricas de Rendimiento Cuantitativas: Las métricas más fundamentales y utilizadas de forma casi universal son el tiempo de ejecución y el speedup (la aceleración obtenida respecto a una versión secuencial). Prácticamente todos los estudios mencionados los utilizan como su principal indicador de rendimiento (p. ej., Piñeiro & Pichel, 2026; Perugini & Kosmidis, 2025; Kacs et al., 2024; Yoshida et al., 2017). A partir de estas, se derivan otras métricas como la eficiencia paralela (Piñeiro & Pichel, 2026; Perugini & Kosmidis, 2025) y la escalabilidad (Utting et al., 2014). En trabajos que se centran en el costo de la propia abstracción, la métrica clave es la sobrecarga (overhead), medida en tiempo absoluto o como un porcentaje del total (Fan et al., 2016; Guitart et al., 2001).
+- *Métricas de Rendimiento Cuantitativas:* Las métricas más fundamentales y utilizadas de forma casi universal son el tiempo de ejecución y el speedup (la aceleración obtenida respecto a una versión secuencial). Prácticamente todos los estudios mencionados los utilizan como su principal indicador de rendimiento (p. ej., Piñeiro & Pichel, 2026; Perugini & Kosmidis, 2025; Kacs et al., 2024; Yoshida et al., 2017). A partir de estas, se derivan otras métricas como la eficiencia paralela (Piñeiro & Pichel, 2026; Perugini & Kosmidis, 2025) y la escalabilidad (Utting et al., 2014). En trabajos que se centran en el costo de la propia abstracción, la métrica clave es la sobrecarga (overhead), medida en tiempo absoluto o como un porcentaje del total (Fan et al., 2016; Guitart et al., 2001).
 
-Métricas Cualitativas de Expresividad y Productividad: La expresividad del lenguaje o la abstracción, la facilidad para expresar ideas complejas de forma clara y concisa se evalúa de forma cualitativa en varios estudios (Perugini & Kosmidis, 2025; Utting et al., 2014; Madridejos Zamorano, 2015). De manera similar, la productividad del programador y la programabilidad se discuten cualitativamente (Perugini & Kosmidis, 2025; Fan et al., 2016). En algunos casos, esta evaluación se apoya en datos cuantitativos como la comparación de líneas de código (LoC) necesarias para implementar una solución (Vikas et al., 2014).
+- *Métricas Cualitativas de Expresividad y Productividad:* La expresividad del lenguaje o la abstracción, la facilidad para expresar ideas complejas de forma clara y concisa se evalúa de forma cualitativa en varios estudios (Perugini & Kosmidis, 2025; Utting et al., 2014; Madridejos Zamorano, 2015). De manera similar, la productividad del programador y la programabilidad se discuten cualitativamente (Perugini & Kosmidis, 2025; Fan et al., 2016). En algunos casos, esta evaluación se apoya en datos cuantitativos como la comparación de líneas de código (LoC) necesarias para implementar una solución (Vikas et al., 2014).
 
 
 === ¿Qué beneficios y ventajas potenciales se identifican en la literatura al implementar estas abstracciones de paralelismo de alto nivel en lenguajes de propósito general modernos?

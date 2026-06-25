@@ -13,7 +13,7 @@ Beck, K. (2003). Test driven development: By example. Addison-Wesley Professiona
 
 Bezanson, J., Edelman, A., Karpinski, S., & Shah, V. B. (2017). Julia: A fresh approach to numerical computing. SIAM Review, 59(1), 65-98. https:\/\/doi.org/10.1137/141000671
 
-Brunschen, C., & Brorsson, M. (2000). OdinMP/CCp—a portable implementation of OpenMP for C. Concurrency: Practice and Experience, 12(12), 1193–1203. https:\/\/doi.org/10.1002/1096-9128(200010)12:12\<1193::AID-CPE527\>3.0.CO;2-U
+Brunschen, C., & Brorsson, M. (2000). OdinMP/CCp—a portable implementation of OpenMP for C. Concurrency: Practice and Experience, 12(12), 1193-1203. https:\/\/doi.org/10.1002/1096-9128(200010)12:12\<1193::AID-CPE527\>3.0.CO;2-U
 
 Camacho, H., Cámara, L., Cascante, R., & Sainz, H. (2001). El enfoque del marco lógico: 10 casos prácticos. Cuaderno para la identificación y diseño de proyectos de desarrollo. Fundación CIDEAL y Acciones de Desarrollo y Cooperación.
 
@@ -35,9 +35,9 @@ Elsevier. (s.f.). Scopus. Recuperado el 12 de octubre de 2025, de https:\/\/www.
 
 Excalidraw. (s.f.). Excalidraw/excalidraw. GitHub. Recuperado el 12 de octubre de 2025, de https:\/\/github.com/excalidraw/excalidraw
 
-Fan, W., He, T., Lai, L., Li, X., Li, Y., Li, Z., Qian, Z., Tian, C., Wang, L., Xu, J., Yao, Y., Yin, Q., Yu, W., Zhou, J., Zhu, D., & Zhu, R. (2021). GraphScope: A unified engine for big graph processing. Proceedings of the VLDB Endowment, 14(12), 2879–2892. https:\/\/doi.org/10.14778/3476311.3476369
+Fan, W., He, T., Lai, L., Li, X., Li, Y., Li, Z., Qian, Z., Tian, C., Wang, L., Xu, J., Yao, Y., Yin, Q., Yu, W., Zhou, J., Zhu, D., & Zhu, R. (2021). GraphScope: A unified engine for big graph processing. Proceedings of the VLDB Endowment, 14(12), 2879-2892. https:\/\/doi.org/10.14778/3476311.3476369
 
-Fan, X., Mehrabi, M., Sinnen, O., et al. (2017). Supporting enhanced exception handling with OpenMP in object-oriented languages. International Journal of Parallel Programming, 45, 1366–1389. https:\/\/doi.org/10.1007/s10766-016-0474-x
+Fan, X., Mehrabi, M., Sinnen, O., et al. (2017). Supporting enhanced exception handling with OpenMP in object-oriented languages. International Journal of Parallel Programming, 45, 1366-1389. https:\/\/doi.org/10.1007/s10766-016-0474-x
 
 Fernandez, R. C., Garefalakis, P., & Pietzuch, P. (2016). Java2SDG: Stateful big data processing for the masses. En 2016 IEEE 32nd International Conference on Data Engineering (ICDE) (pp. 1390-1393). IEEE. https:\/\/doi.org/10.1109/ICDE.2016.7498352
 
@@ -65,7 +65,7 @@ Jain, R. (1991). The art of computer systems performance analysis: Techniques fo
 
 Kacs, D., Lee, J., Zarins, J., & Brown, N. (2024). Pragma driven shared memory parallelism in Zig by supporting OpenMP loop directives. En SC24-W: Workshops of the International Conference for High Performance Computing, Networking, Storage and Analysis (pp. 930-938). IEEE. https:\/\/doi.org/10.1109/SCW63240.2024.00132
 
-Kambites, M. E., Obdržálek, J., & Bull, J. M. (2001). An OpenMP-like interface for parallel programming in Java. Concurrency and Computation: Practice and Experience, 13, 793–814. https:\/\/doi.org/10.1002/cpe.579
+Kambites, M. E., Obdržálek, J., & Bull, J. M. (2001). An OpenMP-like interface for parallel programming in Java. Concurrency and Computation: Practice and Experience, 13, 793-814. https:\/\/doi.org/10.1002/cpe.579
 
 Madridejos Zamorano, E. (2015). Diseño e implementación de funcionalidades OpenMP, basadas en modelos de concurrencia desarrollados en lenguaje Go [Tesis de pregrado, Universidad Politécnica de Madrid]. Archivo Digital UPM. https:\/\/oa.upm.es/38324/
 
@@ -87,7 +87,7 @@ Pike, R. (2012). Go at Google: Language Design in the Service of Software Engine
 
 Piñeiro, C., & Pichel, J. C. (2026). OMP4Py: A pure Python implementation of OpenMP. Future Generation Computer Systems, 175, Article 108035. https:\/\/doi.org/10.1016/j.future.2025.108035
 
-Powers, F. E., Jr., & Alaghband, G. (2007). The Hydra parallel programming system. Concurrency and Computation: Practice and Experience, 20, 1–27. https:\/\/doi.org/10.1002/cpe.1205
+Powers, F. E., Jr., & Alaghband, G. (2007). The Hydra parallel programming system. Concurrency and Computation: Practice and Experience, 20, 1-27. https:\/\/doi.org/10.1002/cpe.1205
 
 Python Software Foundation. (s.f.). What is Python?. Python.org. Recuperado el 12 de octubre de 2025, de https:\/\/www.python.org/
 
@@ -129,12 +129,12 @@ Tu, T., Liu, X., Song, L., & Zhang, Y. (2019). Understanding Real-World Concurre
 
 Typst. (s.f.). Typst Documentation. Recuperado el 15 de mayo de 2026, de https:\/\/typst.app/docs/
 
-Utting, M., Weng, M.-H., & Cleary, J. G. (2014). The JStar language philosophy. Parallel Computing, 40(2), 35–50. https:\/\/doi.org/10.1016/j.parco.2013.11.004
+Utting, M., Weng, M.-H., & Cleary, J. G. (2014). The JStar language philosophy. Parallel Computing, 40(2), 35-50. https:\/\/doi.org/10.1016/j.parco.2013.11.004
 
-Vikas, Giacaman, N., & Sinnen, O. (2014). Multiprocessing with GUI-awareness using OpenMP-like directives in Java. Parallel Computing, 40(2), 69–89. https:\/\/doi.org/10.1016/j.parco.2013.11.005
+Vikas, Giacaman, N., & Sinnen, O. (2014). Multiprocessing with GUI-awareness using OpenMP-like directives in Java. Parallel Computing, 40(2), 69-89. https:\/\/doi.org/10.1016/j.parco.2013.11.005
 
-Xiaowen, L. (2014). Research on multi-core PC parallel computation based on OpenMP. International Journal of Multimedia and Ubiquitous Engineering, 9(7), 131–140. https:\/\/doi.org/10.14257/ijmue.2014.9.7.12
+Xiaowen, L. (2014). Research on multi-core PC parallel computation based on OpenMP. International Journal of Multimedia and Ubiquitous Engineering, 9(7), 131-140. https:\/\/doi.org/10.14257/ijmue.2014.9.7.12
 
-Yoshida, A., Kamiyama, A., & Oka, H. (2017). A task-driven parallel code generation scheme for coarse grain parallelization on Android platform. Journal of Information Processing, 25, 426–437. https:\/\/doi.org/10.2197/ipsjjip.25.426
+Yoshida, A., Kamiyama, A., & Oka, H. (2017). A task-driven parallel code generation scheme for coarse grain parallelization on Android platform. Journal of Information Processing, 25, 426-437. https:\/\/doi.org/10.2197/ipsjjip.25.426
 
-Yoshida, A., Ochi, Y., & Yamanouchi, N. (2014). Parallel Java code generation for layer-unified coarse grain task parallel processing. IPSJ Online Transactions, 7, 168–178. https:\/\/doi.org/10.2197/ipsjtrans.7.168
+Yoshida, A., Ochi, Y., & Yamanouchi, N. (2014). Parallel Java code generation for layer-unified coarse grain task parallel processing. IPSJ Online Transactions, 7, 168-178. https:\/\/doi.org/10.2197/ipsjtrans.7.168
