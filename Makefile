@@ -18,6 +18,9 @@ build:
 test:
 	go test -v ./...
 
+install: build
+	install -m 0755 $(BINARY_NAME) ~/.local/bin/$(BINARY_NAME)
+
 # Clean generated binary files
 clean:
 	rm -f $(BINARY_NAME)
