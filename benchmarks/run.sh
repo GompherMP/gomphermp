@@ -13,7 +13,7 @@ echo "  Cores: $NPROC"
 echo "═══════════════════════════════════════════════════════════════"
 echo ""
 
-for bench in matmul montecarlo prefixsum mergesort fibonacci sections; do
+for bench in matmul prefixsum mergesort fibonacci sections; do
     echo "  Compiling $bench..."
     $GOMPHER build -o /tmp/bench_$bench $bench/main.go
 done
@@ -21,7 +21,7 @@ done
 echo ""
 echo "─── Results  (GOMAXPROCS=$NPROC) ────────────────────────────"
 export GOMAXPROCS=$NPROC
-for bench in matmul montecarlo prefixsum mergesort fibonacci sections; do
+for bench in matmul prefixsum mergesort fibonacci sections; do
     /tmp/bench_$bench
 done
 
@@ -33,7 +33,7 @@ for p in 1 2 4 8 $NPROC; do
     echo ""
     echo "  GOMAXPROCS=$p"
     export GOMAXPROCS=$p
-    for bench in matmul montecarlo prefixsum mergesort fibonacci sections; do
+    for bench in matmul prefixsum mergesort fibonacci sections; do
         /tmp/bench_$bench
     done
 done
