@@ -1,10 +1,8 @@
-#!/usr/bin/env bash
-# Suite de benchmarks GompherMP — seq vs manual vs GompherMP
-# Uso: ./run.sh [ruta_al_compilador_gompher]
-
+#!/bin/bash
 set -e
 GOMPHER=${1:-../gompher}
 NPROC=$(nproc)
+BENCHMARKS="matmul prefixsum mergesort fibonacci sections"
 
 echo "═══════════════════════════════════════════════════════════════"
 echo "  GompherMP Benchmark Suite  —  seq / manual / gompher"
@@ -13,15 +11,15 @@ echo "  Cores: $NPROC"
 echo "═══════════════════════════════════════════════════════════════"
 echo ""
 
-for bench in matmul prefixsum mergesort fibonacci sections; do
+for bench in $BENCHMARKS; do
     echo "  Compiling $bench..."
-    $GOMPHER build -o /tmp/bench_$bench $bench/main.go
+    $GOMPHER build -o /tmp/bench_$bench benchmarks/$bench/main.go
 done
 
 echo ""
 echo "─── Results  (GOMAXPROCS=$NPROC) ────────────────────────────"
 export GOMAXPROCS=$NPROC
-for bench in matmul prefixsum mergesort fibonacci sections; do
+for bench in $BENCHMARKS; do
     /tmp/bench_$bench
 done
 
@@ -33,7 +31,7 @@ for p in 1 2 4 8 $NPROC; do
     echo ""
     echo "  GOMAXPROCS=$p"
     export GOMAXPROCS=$p
-    for bench in matmul prefixsum mergesort fibonacci sections; do
+    for bench in $BENCHMARKS; do
         /tmp/bench_$bench
     done
 done
