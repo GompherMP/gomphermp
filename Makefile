@@ -1,24 +1,24 @@
-# Variables to facilitate changes
 BINARY_NAME=gompher
 MAIN_PATH=./cmd/gompher/main.go
 
-# Default command when running 'make'
 all: build test
 
-# Install dependencies
 deps:
 	go mod tidy
 	go mod download
 
-# Compile the transpiler
 build:
 	go build -o $(BINARY_NAME) $(MAIN_PATH)
 
-# Run unit tests
 test:
 	go test -v ./...
 
-# Clean generated binary files
+install: build
+	install -m 0755 $(BINARY_NAME) ~/.local/bin/$(BINARY_NAME)
+
+benchmark: build
+	bash benchmarks/run.sh ./$(BINARY_NAME)
+
 clean:
 	rm -f $(BINARY_NAME)
 	go clean

@@ -217,3 +217,57 @@ Documento técnico de cobertura de pruebas del módulo de soporte para paralelis
 Este anexo contiene el informe técnico de cobertura de pruebas del módulo Parser correspondiente al resultado R7. El documento detalla la suite completa de pruebas ejecutada, la trazabilidad entre cada directiva y cláusula de la especificación R1 y las pruebas que verifican su análisis sintáctico, las validaciones semánticas implementadas y los resultados cuantitativos obtenidos mediante las herramientas nativas de cobertura de Go.
 
 #link("https://drive.google.com/drive/folders/1nwgdgIVw349f4FEeI03hwK2Inl35lclJ?usp=sharing")
+
+== Anexo L. Curvas de escalabilidad individuales por benchmark
+
+Este anexo presenta las curvas de _speedup_ en función del numero de procesadores ($P in {1, 2, 4, 8, 16}$) para cada uno de los diez _benchmarks_ de la suite, desagregando las variantes Manual y GompherMP. La referencia de escalado lineal ideal (gris punteado) facilita la comparacion visual del nivel de eficiencia paralela alcanzado. Los datos se generaron a partir de los registros crudos del repositorio (media de $n = 10$ repeticiones por configuracion) y cada figura se produce automaticamente con el script `benchmarks/generate_figures.py`. El analisis narrativo agregado por grupo de _benchmarks_ se encuentra en el Capítulo 6.
+
+#figure(
+  image("../figures/bench_matmul.png"),
+  caption: [Escalabilidad de MatMul: speedup en funcion de $P$ para las variantes Manual y GompherMP.],
+) <fig:bench-matmul>
+
+#figure(
+  image("../figures/bench_prefixsum.png"),
+  caption: [Escalabilidad de PrefixSum: speedup en funcion de $P$ para las variantes Manual y GompherMP.],
+) <fig:bench-prefixsum>
+
+#figure(
+  image("../figures/bench_mergesort.png"),
+  caption: [Escalabilidad de MergeSort: speedup en funcion de $P$ para las variantes Manual y GompherMP. Los valores a $P = 1$ reflejan ganancia algorítmica del sort de la librería estándar, no paralelismo.],
+) <fig:bench-mergesort>
+
+#figure(
+  image("../figures/bench_fibonacci.png"),
+  caption: [Escalabilidad de Fibonacci: speedup en funcion de $P$ para Manual, GompherMP (taskloop) y GompherMP (depend).],
+) <fig:bench-fibonacci>
+
+#figure(
+  image("../figures/bench_sections.png"),
+  caption: [Escalabilidad de Sections: speedup en funcion de $P$ para las variantes Manual y GompherMP.],
+) <fig:bench-sections>
+
+#figure(
+  image("../figures/bench_quicksort.png"),
+  caption: [Escalabilidad de QuickSort: speedup en funcion de $P$ para las variantes Manual y GompherMP. Los valores a $P = 1$ reflejan ganancia algorítmica del sort de la librería estándar, no paralelismo.],
+) <fig:bench-quicksort>
+
+#figure(
+  image("../figures/bench_pipeline.png"),
+  caption: [Escalabilidad de Pipeline: speedup en funcion de $P$ para las variantes Manual y GompherMP.],
+) <fig:bench-pipeline>
+
+#figure(
+  image("../figures/bench_nqueens.png"),
+  caption: [Escalabilidad de N-Queens: speedup en funcion de $P$ para las variantes Manual y GompherMP.],
+) <fig:bench-nqueens>
+
+#figure(
+  image("../figures/bench_montecarlo.png"),
+  caption: [Escalabilidad de MonteCarlo: speedup en funcion de $P$ para las variantes Manual y GompherMP.],
+) <fig:bench-montecarlo>
+
+#figure(
+  image("../figures/bench_reduce.png"),
+  caption: [Escalabilidad de Reduce: speedup en funcion de $P$ para las variantes Manual y GompherMP.],
+) <fig:bench-reduce>
