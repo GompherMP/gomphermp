@@ -23,5 +23,6 @@
 #include "chapters/03_state_of_art.typ"
 #include "chapters/04_results.typ"
 #include "chapters/05_implementation.typ"
+#include "chapters/06_evaluation.typ"
 #include "backmatter/references.typ"
 #include "backmatter/appendices.typ"
