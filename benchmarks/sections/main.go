@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"os"
 	goruntime "runtime"
 	"sync"
 	"time"
@@ -93,33 +94,59 @@ func criticalDemo() int {
 	return counter
 }
 
+func durMean(ts []time.Duration) time.Duration {
+	var sum int64
+	for _, t := range ts {
+		sum += int64(t)
+	}
+	return time.Duration(sum / int64(len(ts)))
+}
+
+func durStd(ts []time.Duration, m time.Duration) time.Duration {
+	var v float64
+	for _, t := range ts {
+		d := float64(int64(t) - int64(m))
+		v += d * d
+	}
+	return time.Duration(math.Sqrt(v / float64(len(ts))))
+}
+
+func printCSV(name, variant string, times []time.Duration) {
+	p := numProcs()
+	for i, t := range times {
+		fmt.Printf("%s,%d,%s,%d,%d\n", name, p, variant, i+1, int64(t))
+	}
+}
+
 func main() {
 	data := make([]float64, SZ)
 	for i := range data {
 		data[i] = float64(i%1000) + 1.0
 	}
-	runs := 5
+	const runs = 10
+	timesSeq := make([]time.Duration, runs)
+	timesMan := make([]time.Duration, runs)
+	timesGmp := make([]time.Duration, runs)
 
-	t0 := time.Now()
 	var a0s, b0s, c0s float64
-	for r := 0; r < runs; r++ {
-		a0s, b0s, c0s = processSeq(data)
-	}
-	tSeq := time.Since(t0) / time.Duration(runs)
-
-	t0 = time.Now()
 	var a0m, b0m, c0m float64
-	for r := 0; r < runs; r++ {
-		a0m, b0m, c0m = processManual(data)
-	}
-	tMan := time.Since(t0) / time.Duration(runs)
-
-	t0 = time.Now()
 	var a0g, b0g, c0g float64
+
 	for r := 0; r < runs; r++ {
-		a0g, b0g, c0g = processGompher(data)
+		t0 := time.Now()
+		a0s, b0s, c0s = processSeq(data)
+		timesSeq[r] = time.Since(t0)
 	}
-	tGmp := time.Since(t0) / time.Duration(runs)
+	for r := 0; r < runs; r++ {
+		t0 := time.Now()
+		a0m, b0m, c0m = processManual(data)
+		timesMan[r] = time.Since(t0)
+	}
+	for r := 0; r < runs; r++ {
+		t0 := time.Now()
+		a0g, b0g, c0g = processGompher(data)
+		timesGmp[r] = time.Since(t0)
+	}
 
 	eps := 1e-6
 	okM := math.Abs(a0s-a0m)/a0s < eps && math.Abs(b0s-b0m)/b0s < eps && math.Abs(c0s-c0m)/c0s < eps
@@ -127,8 +154,16 @@ func main() {
 
 	counter := criticalDemo()
 
-	fmt.Printf("Sections\tseq=%v\tmanual=%v\tgompher=%v\tspeedup_manual=%.2fx\tspeedup_gompher=%.2fx\tgmp_vs_manual=%.2fx\tcorrect=%v/%v\tcounter=%d(=%d cores)\n",
-		tSeq, tMan, tGmp,
+	printCSV("sections", "seq", timesSeq)
+	printCSV("sections", "manual", timesMan)
+	printCSV("sections", "gompher", timesGmp)
+
+	tSeq, tSeqStd := durMean(timesSeq), durStd(timesSeq, durMean(timesSeq))
+	tMan, tManStd := durMean(timesMan), durStd(timesMan, durMean(timesMan))
+	tGmp, tGmpStd := durMean(timesGmp), durStd(timesGmp, durMean(timesGmp))
+
+	fmt.Fprintf(os.Stderr, "Sections\tseq=%v±%v\tmanual=%v±%v\tgompher=%v±%v\tspeedup_manual=%.2fx\tspeedup_gompher=%.2fx\tgmp_vs_manual=%.2fx\tcorrect=%v/%v\tcounter=%d(=%d cores)\n",
+		tSeq, tSeqStd, tMan, tManStd, tGmp, tGmpStd,
 		float64(tSeq)/float64(tMan), float64(tSeq)/float64(tGmp), float64(tMan)/float64(tGmp),
 		okM, okG, counter, numProcs())
 }

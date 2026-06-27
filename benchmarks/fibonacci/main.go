@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"os"
 	goruntime "runtime"
 	"time"
 )
@@ -106,48 +107,80 @@ func sumTaskloop(data []float64) float64 {
 	return total
 }
 
+func durMean(ts []time.Duration) time.Duration {
+	var sum int64
+	for _, t := range ts {
+		sum += int64(t)
+	}
+	return time.Duration(sum / int64(len(ts)))
+}
+
+func durStd(ts []time.Duration, m time.Duration) time.Duration {
+	var v float64
+	for _, t := range ts {
+		d := float64(int64(t) - int64(m))
+		v += d * d
+	}
+	return time.Duration(math.Sqrt(v / float64(len(ts))))
+}
+
+func printCSV(name, variant string, times []time.Duration) {
+	p := numProcs()
+	for i, t := range times {
+		fmt.Printf("%s,%d,%s,%d,%d\n", name, p, variant, i+1, int64(t))
+	}
+}
+
 func main() {
 	data := make([]float64, VecN)
 	for i := range data {
 		data[i] = float64(i + 1)
 	}
-	runs := 5
+	const runs = 10
+	timesSeq := make([]time.Duration, runs)
+	timesMan := make([]time.Duration, runs)
+	timesDep := make([]time.Duration, runs)
+	timesLoop := make([]time.Duration, runs)
 
-	t0 := time.Now()
-	var rs float64
+	var rs, rm, rd, rl float64
 	for r := 0; r < runs; r++ {
+		t0 := time.Now()
 		rs = sumSeq(data)
+		timesSeq[r] = time.Since(t0)
 	}
-	tSeq := time.Since(t0) / time.Duration(runs)
-
-	t0 = time.Now()
-	var rm float64
 	for r := 0; r < runs; r++ {
+		t0 := time.Now()
 		rm = sumManual(data)
+		timesMan[r] = time.Since(t0)
 	}
-	tMan := time.Since(t0) / time.Duration(runs)
-
-	t0 = time.Now()
-	var rd float64
 	for r := 0; r < runs; r++ {
+		t0 := time.Now()
 		rd = sumDepend(data)
+		timesDep[r] = time.Since(t0)
 	}
-	tDep := time.Since(t0) / time.Duration(runs)
-
-	t0 = time.Now()
-	var rl float64
 	for r := 0; r < runs; r++ {
+		t0 := time.Now()
 		rl = sumTaskloop(data)
+		timesLoop[r] = time.Since(t0)
 	}
-	tLoop := time.Since(t0) / time.Duration(runs)
+
+	printCSV("fibonacci", "seq", timesSeq)
+	printCSV("fibonacci", "manual", timesMan)
+	printCSV("fibonacci", "task_depend", timesDep)
+	printCSV("fibonacci", "taskloop", timesLoop)
 
 	eps := rs * 1e-6
-	fmt.Printf("Task depend\tseq=%v\tmanual=%v\tgompher=%v\tspeedup_manual=%.2fx\tspeedup_gompher=%.2fx\tgmp_vs_manual=%.2fx\tcorrect=%v/%v\n",
-		tSeq, tMan, tDep,
+	tSeq, tSeqStd := durMean(timesSeq), durStd(timesSeq, durMean(timesSeq))
+	tMan, tManStd := durMean(timesMan), durStd(timesMan, durMean(timesMan))
+	tDep, tDepStd := durMean(timesDep), durStd(timesDep, durMean(timesDep))
+	tLoop, tLoopStd := durMean(timesLoop), durStd(timesLoop, durMean(timesLoop))
+
+	fmt.Fprintf(os.Stderr, "Task depend\tseq=%v±%v\tmanual=%v±%v\tgompher=%v±%v\tspeedup_manual=%.2fx\tspeedup_gompher=%.2fx\tgmp_vs_manual=%.2fx\tcorrect=%v/%v\n",
+		tSeq, tSeqStd, tMan, tManStd, tDep, tDepStd,
 		float64(tSeq)/float64(tMan), float64(tSeq)/float64(tDep), float64(tMan)/float64(tDep),
 		math.Abs(rm-rs) < eps, math.Abs(rd-rs) < eps)
-	fmt.Printf("Taskloop\tseq=%v\tmanual=%v\tgompher=%v\tspeedup_manual=%.2fx\tspeedup_gompher=%.2fx\tgmp_vs_manual=%.2fx\tcorrect=%v/%v\n",
-		tSeq, tMan, tLoop,
+	fmt.Fprintf(os.Stderr, "Taskloop\tseq=%v±%v\tmanual=%v±%v\tgompher=%v±%v\tspeedup_manual=%.2fx\tspeedup_gompher=%.2fx\tgmp_vs_manual=%.2fx\tcorrect=%v/%v\n",
+		tSeq, tSeqStd, tMan, tManStd, tLoop, tLoopStd,
 		float64(tSeq)/float64(tMan), float64(tSeq)/float64(tLoop), float64(tMan)/float64(tLoop),
 		math.Abs(rm-rs) < eps, math.Abs(rl-rs) < eps)
 }

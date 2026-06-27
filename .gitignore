@@ -3,3 +3,4 @@ gompher
 */**/gompher_*.go
 .direnv/
 .envrc
+benchmark_results.csv

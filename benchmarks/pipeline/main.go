@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"os"
 	goruntime "runtime"
 	"time"
 )
@@ -120,6 +121,30 @@ func pipelineGompher(chunks [][]float64, bufs [][]float64) float64 {
 	return total
 }
 
+func durMean(ts []time.Duration) time.Duration {
+	var sum int64
+	for _, t := range ts {
+		sum += int64(t)
+	}
+	return time.Duration(sum / int64(len(ts)))
+}
+
+func durStd(ts []time.Duration, m time.Duration) time.Duration {
+	var v float64
+	for _, t := range ts {
+		d := float64(int64(t) - int64(m))
+		v += d * d
+	}
+	return time.Duration(math.Sqrt(v / float64(len(ts))))
+}
+
+func printCSV(name, variant string, times []time.Duration) {
+	p := numProcs()
+	for i, t := range times {
+		fmt.Printf("%s,%d,%s,%d,%d\n", name, p, variant, i+1, int64(t))
+	}
+}
+
 func main() {
 	chunks := make([][]float64, ChunkCount)
 	bufs := make([][]float64, ChunkCount)
@@ -130,32 +155,39 @@ func main() {
 			chunks[i][j] = float64(j+1) + float64(i)*0.01
 		}
 	}
-	runs := 5
+	const runs = 10
+	timesSeq := make([]time.Duration, runs)
+	timesMan := make([]time.Duration, runs)
+	timesGmp := make([]time.Duration, runs)
 
-	t0 := time.Now()
-	var rs float64
+	var rs, rm, rg float64
 	for r := 0; r < runs; r++ {
+		t0 := time.Now()
 		rs = pipelineSeq(chunks, bufs)
+		timesSeq[r] = time.Since(t0)
 	}
-	tSeq := time.Since(t0) / time.Duration(runs)
-
-	t0 = time.Now()
-	var rm float64
 	for r := 0; r < runs; r++ {
+		t0 := time.Now()
 		rm = pipelineManual(chunks, bufs)
+		timesMan[r] = time.Since(t0)
 	}
-	tMan := time.Since(t0) / time.Duration(runs)
-
-	t0 = time.Now()
-	var rg float64
 	for r := 0; r < runs; r++ {
+		t0 := time.Now()
 		rg = pipelineGompher(chunks, bufs)
+		timesGmp[r] = time.Since(t0)
 	}
-	tGmp := time.Since(t0) / time.Duration(runs)
+
+	printCSV("pipeline", "seq", timesSeq)
+	printCSV("pipeline", "manual", timesMan)
+	printCSV("pipeline", "gompher", timesGmp)
 
 	eps := math.Abs(rs) * 1e-9
-	fmt.Printf("Pipeline\tseq=%v\tmanual=%v\tgompher=%v\tspeedup_manual=%.2fx\tspeedup_gompher=%.2fx\tgmp_vs_manual=%.2fx\tcorrect=%v/%v\n",
-		tSeq, tMan, tGmp,
+	tSeq, tSeqStd := durMean(timesSeq), durStd(timesSeq, durMean(timesSeq))
+	tMan, tManStd := durMean(timesMan), durStd(timesMan, durMean(timesMan))
+	tGmp, tGmpStd := durMean(timesGmp), durStd(timesGmp, durMean(timesGmp))
+
+	fmt.Fprintf(os.Stderr, "Pipeline\tseq=%v±%v\tmanual=%v±%v\tgompher=%v±%v\tspeedup_manual=%.2fx\tspeedup_gompher=%.2fx\tgmp_vs_manual=%.2fx\tcorrect=%v/%v\n",
+		tSeq, tSeqStd, tMan, tManStd, tGmp, tGmpStd,
 		float64(tSeq)/float64(tMan), float64(tSeq)/float64(tGmp), float64(tMan)/float64(tGmp),
 		math.Abs(rm-rs) < eps, math.Abs(rg-rs) < eps)
 }

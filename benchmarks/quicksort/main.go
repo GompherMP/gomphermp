@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"math"
+	"os"
 	goruntime "runtime"
 	"sort"
 	"sync"
@@ -105,34 +107,67 @@ func quickSortGompherEntry(data []int) {
 	}
 }
 
+func durMean(ts []time.Duration) time.Duration {
+	var sum int64
+	for _, t := range ts {
+		sum += int64(t)
+	}
+	return time.Duration(sum / int64(len(ts)))
+}
+
+func durStd(ts []time.Duration, m time.Duration) time.Duration {
+	var v float64
+	for _, t := range ts {
+		d := float64(int64(t) - int64(m))
+		v += d * d
+	}
+	return time.Duration(math.Sqrt(v / float64(len(ts))))
+}
+
+func printCSV(name, variant string, times []time.Duration) {
+	p := numProcs()
+	for i, t := range times {
+		fmt.Printf("%s,%d,%s,%d,%d\n", name, p, variant, i+1, int64(t))
+	}
+}
+
 func main() {
 	orig := newData()
-	runs := 3
+	const runs = 10
 	dS, dM, dG := make([]int, N), make([]int, N), make([]int, N)
+	timesSeq := make([]time.Duration, runs)
+	timesMan := make([]time.Duration, runs)
+	timesGmp := make([]time.Duration, runs)
 
-	t0 := time.Now()
 	for r := 0; r < runs; r++ {
 		copy(dS, orig)
+		t0 := time.Now()
 		quickSortSeq(dS)
+		timesSeq[r] = time.Since(t0)
 	}
-	tSeq := time.Since(t0) / time.Duration(runs)
-
-	t0 = time.Now()
 	for r := 0; r < runs; r++ {
 		copy(dM, orig)
+		t0 := time.Now()
 		quickSortManual(dM)
+		timesMan[r] = time.Since(t0)
 	}
-	tMan := time.Since(t0) / time.Duration(runs)
-
-	t0 = time.Now()
 	for r := 0; r < runs; r++ {
 		copy(dG, orig)
+		t0 := time.Now()
 		quickSortGompherEntry(dG)
+		timesGmp[r] = time.Since(t0)
 	}
-	tGmp := time.Since(t0) / time.Duration(runs)
 
-	fmt.Printf("Quicksort\tseq=%v\tmanual=%v\tgompher=%v\tspeedup_manual=%.2fx\tspeedup_gompher=%.2fx\tgmp_vs_manual=%.2fx\tcorrect=%v/%v\n",
-		tSeq, tMan, tGmp,
+	printCSV("quicksort", "seq", timesSeq)
+	printCSV("quicksort", "manual", timesMan)
+	printCSV("quicksort", "gompher", timesGmp)
+
+	tSeq, tSeqStd := durMean(timesSeq), durStd(timesSeq, durMean(timesSeq))
+	tMan, tManStd := durMean(timesMan), durStd(timesMan, durMean(timesMan))
+	tGmp, tGmpStd := durMean(timesGmp), durStd(timesGmp, durMean(timesGmp))
+
+	fmt.Fprintf(os.Stderr, "Quicksort\tseq=%v±%v\tmanual=%v±%v\tgompher=%v±%v\tspeedup_manual=%.2fx\tspeedup_gompher=%.2fx\tgmp_vs_manual=%.2fx\tcorrect=%v/%v\n",
+		tSeq, tSeqStd, tMan, tManStd, tGmp, tGmpStd,
 		float64(tSeq)/float64(tMan), float64(tSeq)/float64(tGmp), float64(tMan)/float64(tGmp),
 		isSorted(dM), isSorted(dG))
 }
