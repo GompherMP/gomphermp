@@ -2,7 +2,7 @@
 set -e
 GOMPHER=${1:-../gompher}
 NPROC=$(nproc)
-BENCHMARKS="matmul prefixsum mergesort fibonacci sections"
+BENCHMARKS="matmul prefixsum mergesort fibonacci sections quicksort pipeline nqueens montecarlo reduce"
 
 echo "═══════════════════════════════════════════════════════════════"
 echo "  GompherMP Benchmark Suite  —  seq / manual / gompher"
