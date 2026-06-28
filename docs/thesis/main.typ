@@ -24,5 +24,5 @@
 #include "chapters/04_results.typ"
 #include "chapters/05_implementation.typ"
 #include "chapters/06_evaluation.typ"
+#include "chapters/07_conclusions.typ"
 #include "backmatter/references.typ"
-#include "backmatter/appendices.typ"

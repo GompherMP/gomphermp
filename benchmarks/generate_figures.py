@@ -227,6 +227,70 @@ def fig_bench(bench, title, variants):
     _save(fig, f'bench_{bench}.png')
 
 
+# ── Figure: loc_comparison.png ───────────────────────────────────────────────
+def fig_loc_comparison():
+    # (label, loc_manual, loc_gompher)
+    # Ordered: most reduction (bottom) → most increase (top)
+    data = [
+        ('Reduce',               34, 10),
+        ('MonteCarlo',           26, 11),
+        ('PrefixSum',            55, 27),
+        ('MatMul',               24, 12),
+        ('Sections',             26, 26),
+        ('MergeSort',            24, 26),
+        ('QuickSort',            21, 23),
+        ('Fibonacci (taskloop)', 16, 21),
+        ('N-Queens',             14, 19),
+        ('Pipeline',             27, 54),
+        ('Fibonacci (depend)',   16, 39),
+    ]
+
+    labels  = [d[0] for d in data]
+    loc_man = np.array([d[1] for d in data], dtype=float)
+    loc_gmp = np.array([d[2] for d in data], dtype=float)
+
+    n  = len(labels)
+    y  = np.arange(n)
+    bh = 0.35
+
+    fig, ax = plt.subplots(figsize=(9, 7))
+
+    ax.barh(y + bh / 2, loc_man, bh, color=C_MANUAL, label='Manual')
+    ax.barh(y - bh / 2, loc_gmp, bh, color=C_GMP,    label='GompherMP')
+
+    xmax = float(max(max(loc_man), max(loc_gmp))) * 1.45
+
+    # delta-LoC annotations
+    for i, (lm, lg) in enumerate(zip(loc_man, loc_gmp)):
+        delta = (lg - lm) / lm * 100
+        sign  = '+' if delta > 0 else ''
+        txt   = f'{sign}{delta:.0f}%'
+        col   = '#8b0000' if delta > 0 else '#1a6b1a'
+        ax.text(max(lm, lg) + 1.2, i, txt,
+                va='center', fontsize=9, color=col, fontweight='bold')
+
+    # category separators and labels
+    ax.axhline(3.5, color='#cccccc', linewidth=0.9, zorder=0)
+    ax.axhline(6.5, color='#cccccc', linewidth=0.9, zorder=0)
+    ax.text(xmax * 0.99, 1.5, 'GompherMP reduce LoC',      ha='right',
+            va='center', fontsize=8, color='#444', fontstyle='italic')
+    ax.text(xmax * 0.99, 5.0, 'Paridad',                   ha='right',
+            va='center', fontsize=8, color='#444', fontstyle='italic')
+    ax.text(xmax * 0.99, 8.5, 'GompherMP incrementa LoC',  ha='right',
+            va='center', fontsize=8, color='#444', fontstyle='italic')
+
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels)
+    ax.set_xlabel('Líneas de código (LoC)')
+    ax.set_title('Comparación de LoC: paralelo manual vs. GompherMP')
+    ax.legend(loc='lower right')
+    ax.grid(axis='x')
+    ax.set_xlim(0, xmax)
+
+    fig.tight_layout()
+    _save(fig, 'loc_comparison.png')
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def _save(fig, name):
     path = os.path.join(FIG_DIR, name)
@@ -241,4 +305,5 @@ if __name__ == '__main__':
     fig_speedup_p16()
     for bench, title, variants in BENCH_CONFIGS:
         fig_bench(bench, title, variants)
+    fig_loc_comparison()
     print('Done.')

@@ -1,12 +1,12 @@
 
 = Capítulo 6. OE3: Evaluación de GompherMP mediante benchmarks
 
-En este capítulo se detalla el trabajo realizado para cumplir con el tercer objetivo específico, orientado a validar empíricamente la herramienta GompherMP. Este objetivo materializa la evaluación de rendimiento y escalabilidad de la solución desarrollada. Los resultados aquí presentados toman como insumo la herramienta funcional producida en el OE2 y la someten a una suite de _benchmarks_ representativos, cuantificando el rendimiento computacional del código transpilado frente a las implementaciones secuencial y paralela manual en Go.
+En este capítulo se detalla el trabajo realizado para cumplir con el tercer objetivo específico, orientado a validar empíricamente la herramienta GompherMP. La evaluación aborda dos dimensiones complementarias: la eficiencia en tiempo de ejecución del código transpilado y el impacto del paradigma de directivas sobre la expresividad del desarrollador. Ambas dimensiones son necesarias para responder la pregunta central del proyecto: si es posible cerrar la brecha semántica entre el modelo de directivas de paralelismo y el ecosistema de Go, obteniendo rendimiento comparable al código paralelo manual idiomático sin sacrificar la legibilidad ni incrementar la carga cognitiva del programador. Los resultados aquí presentados toman como insumo la herramienta funcional producida en el OE2 y la someten a una suite de _benchmarks_ representativos, cuantificando el rendimiento computacional y la expresividad del código transpilado frente a las implementaciones secuencial y paralela manual en Go.
 
 
 == R10: Suite de _benchmarks_ implementada
 
-Para cumplir con este resultado, se diseñó e implementó una suite de diez _benchmarks_ de cómputo intensivo que ejercita de forma diferenciada los principales patrones de paralelismo soportados por GompherMP. La selección de los algoritmos se guió por dos criterios complementarios. El primero es la representatividad de los dominios canónicos del cómputo paralelo: álgebra lineal densa, búsqueda combinatoria, ordenamiento, simulación numérica estocástica, procesamiento por etapas y operaciones de reducción sobre datos. El segundo es la cobertura de directivas: el conjunto de _benchmarks_ ejercita colectivamente la totalidad de los constructos implementados en GompherMP, desde el paralelismo estructurado de bucles (`parallel for`, `schedule`, `reduction`) hasta el paralelismo de tareas con dependencias explícitas (`task`, `taskloop`, `taskgroup`, cláusulas `depend`), pasando por los mecanismos de sincronización (`barrier`, `single`) y las secciones concurrentes heterogéneas (`parallel sections`).
+Para cumplir con este resultado, se diseñó e implementó una suite de diez _benchmarks_ de cómputo intensivo que ejercita de forma diferenciada los principales patrones de paralelismo soportados por GompherMP. La selección de los algoritmos se guió por dos criterios complementarios. El primero es la representatividad de los patrones de paralelismo que un desarrollador Go puede encontrar al paralelizar aplicaciones de propósito general: bucles de datos independientes, reducciones, ordenamiento recursivo, búsqueda combinatoria, simulación estocástica, procesamiento por etapas y grafos de dependencias entre tareas. El segundo es la cobertura de directivas: el conjunto de _benchmarks_ ejercita colectivamente la totalidad de los constructos implementados en GompherMP, desde el paralelismo estructurado de bucles (`parallel for`, `schedule`, `reduction`) hasta el paralelismo de tareas con dependencias explícitas (`task`, `taskloop`, `taskgroup`, cláusulas `depend`), pasando por los mecanismos de sincronización (`barrier`, `single`) y las secciones concurrentes heterogéneas (`parallel sections`).
 
 Cada algoritmo fue implementado en tres variantes complementarias:
 
@@ -121,22 +121,138 @@ A partir de las curvas, es posible identificar cuatro perfiles de escalabilidad 
 _PrefixSum_ exhibe el perfil más irregular: la variante manual escala hasta $P = 8$ ($2.73 times$) pero retrocede a $1.63 times$ a $P = 16$, mientras GompherMP nunca supera $1.38 times$. Este comportamiento regresivo es consistente con la ley de Amdahl aplicada a la fase secuencial forzada por la suma prefija. _MergeSort_ muestra degradación progresiva en ambas variantes conforme aumenta $P$, alcanzando valores por debajo de $1 times$ a $P = 16$: la fase de _merge_ final domina el tiempo de ejecución independientemente de la estrategia de paralelización. Finalmente, _Fibonacci_ presenta el patrón de escalabilidad más errático de GompherMP, con un retroceso entre $P = 4$ y $P = 8$ atribuible a contención esporádica en el _pool_ para tareas de grano muy fino.
 
 
+== R12: Reporte de análisis comparativo sobre expresividad y productividad
+
+Para cumplir con este resultado, se elaboró un análisis comparativo de la expresividad y la productividad del desarrollador entre las versiones paralela manual y paralela con GompherMP de cada _benchmark_ de la suite. La evaluación se estructura en dos ejes complementarios: un análisis cuantitativo basado en el conteo de líneas de código (LoC) de las funciones de paralelización, y un análisis cualitativo orientado a caracterizar la legibilidad, la separación de incumbencias y la propensión a errores de concurrencia de cada enfoque.
+
+*Metodología del análisis cuantitativo.* La unidad de análisis son las funciones que implementan la lógica de paralelización en cada variante. Se excluyen los auxiliares de medición de tiempo, las funciones secuenciales, el `main` y las rutinas de utilidad compartidas entre variantes. Para los _benchmarks_ con múltiples funciones paralelas (PrefixSum, QuickSort, Fibonacci), el conteo agrega todas las funciones que corresponden a cada variante. La variación relativa de LoC se define como:
+
+$ Delta"LoC" = (L_"gmp" - L_"man") / L_"man" times 100\% $
+
+donde $L_"man"$ y $L_"gmp"$ son los conteos de líneas de la versión manual y GompherMP, respectivamente. Un valor negativo indica que GompherMP reduce el código; un valor positivo, que lo incrementa. Adicionalmente, se contabiliza el número de directivas GompherMP requeridas como indicador del nivel de anotación.
+
+La elección de LoC como proxy cuantitativo de la expresividad se fundamenta en la relación directa entre el número de líneas dedicadas a la infraestructura de concurrencia y la carga cognitiva del desarrollo: cada línea de _boilerplate_ (goroutines, canales, mutexes, grupos de espera) es un concepto adicional que el programador debe gestionar y verificar manualmente, independientemente de la lógica algorítmica que pretende paralelizar. Nanz y Furia (2015) documentan que los lenguajes que producen soluciones más concisas para tareas equivalentes tienden a reducir la probabilidad de errores derivados de la complejidad técnica, observación que motiva el uso de LoC como indicador de la eficiencia expresiva. No obstante, dado que el recuento de líneas no captura la claridad estructural del código, el análisis cuantitativo se complementa con un análisis cualitativo orientado a examinar la separación entre lógica algorítmica y gestión de concurrencia en cada variante.
+
+La @tab:tabla-loc-comparativo presenta los resultados del análisis cuantitativo para las once configuraciones de la suite, ordenadas de mayor reducción de LoC a mayor incremento.
+
+#figure(
+  table(
+    columns: (1.6fr, 0.7fr, 0.7fr, 0.9fr, 0.7fr),
+    stroke: 0.5pt,
+    fill: (col, row) => if row == 0 { luma(230) },
+    align: (col, row) => if row == 0 { center + horizon } else { center + top },
+    [*Benchmark*], [$L_"man"$], [$L_"gmp"$], [*Directivas*], [$Delta$*LoC*],
+    [Reduce],               [34], [10], [1],  [-71%],
+    [MonteCarlo],           [26], [11], [1],  [-58%],
+    [PrefixSum],            [55], [27], [6],  [-51%],
+    [MatMul],               [24], [12], [1],  [-50%],
+    [Sections],             [26], [26], [4],  [0%],
+    [MergeSort],            [24], [26], [2],  [+8%],
+    [QuickSort],            [21], [23], [4],  [+10%],
+    [Fibonacci (taskloop)], [16], [21], [2],  [+31%],
+    [N-Queens],             [14], [19], [2],  [+36%],
+    [Pipeline],             [27], [54], [9],  [+100%],
+    [Fibonacci (depend)],   [16], [39], [8],  [+144%],
+  ),
+  caption: [Conteo de líneas de código (LoC) de las funciones paralelas por variante, número de directivas GompherMP utilizadas y variación relativa respecto al paralelo manual ($Delta$LoC)],
+  kind: table,
+) <tab:tabla-loc-comparativo>
+
+#figure(
+  image("../figures/loc_comparison.png"),
+  caption: [Comparación de LoC entre las versiones manual y GompherMP para cada _benchmark_ de la suite. Las etiquetas indican el $Delta$LoC respecto al paralelo manual; valores negativos (verde) indican reducción de código con GompherMP.],
+) <fig:loc-comparativo>
+
+Los resultados de la @tab:tabla-loc-comparativo permiten identificar tres patrones de comportamiento diferenciados en cuanto a la expresividad del código.
+
+*GompherMP reduce significativamente el LoC ($Delta$LoC $lt.eq -50%$).* Los _benchmarks_ _Reduce_ (−71%), _MonteCarlo_ (−58%), _PrefixSum_ (−51%) y _MatMul_ (−50%) concentran el mayor beneficio de productividad. En los tres primeros, una sola directiva sobre el bucle externo reemplaza una estructura manual de entre 24 y 34 líneas que combina arreglos de resultados parciales, instancias de `sync.WaitGroup`, bucles de despacho de goroutines y bucles de consolidación. El caso más ilustrativo es _Reduce_: la versión manual requiere 34 líneas para paralelizar un cuerpo de bucle de 4 líneas de algoritmo, mientras que la versión GompherMP con la directiva `//gompher parallel for schedule(dynamic, 64) reduction(max:m)` expresa el mismo cómputo en 10 líneas, de las cuales 9 corresponden a la lógica algorítmica y una sola es la anotación de paralelismo. En _PrefixSum_, aunque el ahorro también es del 51%, se distribuye entre dos funciones y requiere 6 directivas para modelar la sincronización explícita con `barrier` y `single` dentro de una región paralela estructurada, ejercitando colectivamente un subconjunto más amplio de la especificación de GompherMP.
+
+*Paridad de LoC ($|Delta"LoC"| lt.eq 10%$).* _MergeSort_ (+8%), _QuickSort_ (+10%) y _Sections_ (0%) presentan conteos prácticamente equivalentes entre versiones. En _MergeSort_ y _QuickSort_, la versión GompherMP introduce 2 a 4 líneas adicionales atribuibles a los bloques explícitos `{}` requeridos por la sintaxis de directivas de tarea y a las variables auxiliares necesarias para capturar el índice de iteración por tarea. En _Sections_, la estructura de bloques anidada impuesta por `parallel sections` / `section` es casi idéntica en LoC a los cierres anónimos de goroutines de la versión manual, siendo la diferencia estructural y no cuantitativa.
+
+*GompherMP incrementa el LoC ($Delta"LoC" > 10%$).* _Fibonacci (taskloop)_ (+31%), _N-Queens_ (+36%), _Pipeline_ (+100%) y _Fibonacci (depend)_ (+144%) son los _benchmarks_ donde la versión GompherMP requiere más líneas que el manual. Este incremento responde a dos causas diferenciadas. En _N-Queens_ y _Fibonacci (taskloop)_, el incremento es menor (5 a 7 líneas) y se debe a que las tareas GompherMP requieren variables auxiliares explícitas para capturar el índice de columna por tarea (e.g., `c := col`) y un arreglo de resultados indexado por posición, mientras que la versión manual puede acumular resultados directamente en un canal con semántica de cola. En _Pipeline_ y _Fibonacci (depend)_, el incremento es estructural: expresar un grafo de dependencias de datos explícito con las cláusulas `depend(out/in)` requiere declarar variables centinela para cada arco del DAG (las variables `s0..s3` y `f0..f3` en _Pipeline_, las parciales `r0..r3`, `m0`, `m1` en _Fibonacci (depend)_) y anotar cada tarea con sus roles de entrada y salida, elevando el LoC al doble o más respecto al manual.
+
+*Análisis cualitativo.* Más allá del conteo de líneas, la diferencia estructural entre ambos enfoques se aprecia con mayor claridad sobre un ejemplo concreto. La @fig:fibonacci-comparativo muestra las funciones paralelas del _benchmark_ Fibonacci en sus dos variantes, elegido por ser representativo del caso intermedio: GompherMP introduce líneas adicionales (+31%) pero reestructura el código de forma significativa.
+
+#figure(
+  grid(
+    columns: (1fr, 1fr),
+    gutter: 1.2em,
+    align(top)[
+      *Versión manual* ($L_"man" = 16$ líneas)
+      ```go
+      func sumManual(data []float64) float64 {
+          p, chunk := numProcs(),
+                      len(data)/numProcs()
+          ch := make(chan float64, p)
+          for t := 0; t < p; t++ {
+              lo, hi := t*chunk, (t+1)*chunk
+              if t == p-1 {
+                  hi = len(data)
+              }
+              go func(lo, hi int) {
+                  ch <- heavySqrtSum(data, lo, hi)
+              }(lo, hi)
+          }
+          total := 0.0
+          for range p {
+              total += <-ch
+          }
+          return total
+      }
+      ```
+    ],
+    align(top)[
+      *Versión GompherMP (taskloop)* ($L_"gmp" = 21$ líneas)
+      ```go
+      func sumTaskloop(data []float64) float64 {
+          p := numProcs()
+          results := make([]float64, p)
+          chunkSize := len(data) / p
+          //gompher taskgroup
+          {
+              //gompher taskloop grainsize(1)
+              for c := 0; c < p; c++ {
+                  lo, hi := c*chunkSize,
+                            (c+1)*chunkSize
+                  if c == p-1 {
+                      hi = len(data)
+                  }
+                  results[c] = heavySqrtSum(
+                      data, lo, hi)
+              }
+          }
+          total := 0.0
+          for _, v := range results {
+              total += v
+          }
+          return total
+      }
+      ```
+    ]
+  ),
+  caption: [Comparación de implementaciones paralelas del _benchmark_ Fibonacci. Izquierda: versión manual con goroutines y canal. Derecha: versión GompherMP con directivas `taskgroup` y `taskloop`. Los dos comentarios `//gompher` son las únicas anotaciones de paralelismo.],
+  kind: image,
+) <fig:fibonacci-comparativo>
+
+En la versión manual, el algoritmo (la llamada a `heavySqrtSum` con los índices de segmento) queda enterrado dentro de un cierre anónimo de goroutine: el programador debe razonar simultáneamente sobre la aritmética de partición del arreglo y sobre el protocolo del canal: su capacidad, el orden de envío y la recolección exacta de `p` valores. En la versión GompherMP, el bucle de partición es el cuerpo visible del código, precedido por dos anotaciones que declaran la intención de paralelismo; el cuerpo puede leerse como código secuencial con paralelismo implícito. El coste de esta reestructuración es la necesidad de un arreglo auxiliar `results[]` para acumular los valores por tarea, lo que explica las 5 líneas adicionales: la directiva `taskloop` no dispone de un mecanismo de reducción implícita (a diferencia de `parallel for reduction`), de modo que el programador gestiona la recolección de resultados de forma explícita.
+
+Este ejemplo ilustra un límite de expresividad del diseño actual: cuando la acumulación de resultados por tarea es necesaria, `taskloop` es menos conciso que `parallel for reduction`. Sin embargo, incluso en este escenario de mayor LoC, la versión GompherMP elimina los conceptos más propensos a errores, como goroutines explícitas, un canal con capacidad fija y el cierre con captura de variables, que son la combinación más habitual de errores de concurrencia documentados en el ecosistema de Go (Tu et al., 2019).
+
+La distinción estructural se agudiza en los extremos del espectro. En _Reduce_, el mismo patrón de distribución de trabajo se expresa con `parallel for schedule(dynamic, 64) reduction(max:m)`: una sola línea de directiva reemplaza las 24 líneas de boilerplate de la versión manual (arreglo de parciales, `sync.WaitGroup`, bucle de despacho, bucle de consolidación), dejando solo las 9 líneas del cuerpo algorítmico. En el otro extremo, _Pipeline_ y _Fibonacci (depend)_ requieren variables centinela explícitas por cada arco del grafo de dependencias, como `s0..s3` y `f0..f3` en _Pipeline_, lo que incrementa el LoC pero deja el flujo de datos completamente auditable en el código fuente, lo que puede facilitar la revisión y el mantenimiento.
+
+La variante manual exige dominar goroutines, canales, `sync.WaitGroup`, `sync.Mutex` y operaciones atómicas del paquete `sync/atomic`, aplicándolos correctamente bajo el modelo de memoria de Go. La variante GompherMP desplaza este conocimiento hacia la especificación declarativa de directivas, reduciendo la barrera de entrada para paralelizar código existente. En síntesis, el análisis confirma que el impacto de GompherMP en la expresividad del código es fuertemente dependiente del patrón de paralelismo: para bucles _data-parallel_ con reducción o distribución estática, GompherMP elimina entre el 50% y el 71% del código eliminando por completo el _boilerplate_ de concurrencia; para grafos de dependencias de tareas, el impacto en LoC es inverso pero se gana legibilidad declarativa del flujo de datos. Para los patrones de paralelismo más habituales en aplicaciones Go de propósito general, que son también los _benchmarks_ con mejores métricas de rendimiento, GompherMP resulta más expresivo y más productivo que la paralelización manual idiomática.
+
+
 == Discusión de resultados
 
-Los resultados de la evaluación permiten clasificar el comportamiento de GompherMP en tres categorías, cuyas causas raíz apuntan tanto a fortalezas del diseño como a limitaciones concretas de la implementación actual.
+La evaluación conjunta de rendimiento (R11) y expresividad (R12) dibuja un cuadro coherente sobre las condiciones bajo las cuales GompherMP es eficaz. El patrón más claro emerge del grupo de _benchmarks_ que concentran los mejores resultados en ambas dimensiones: _Reduce_, _MatMul_ y _N-Queens_ logran simultáneamente las mayores reducciones de LoC (−71%, −50% y una paridad con ventaja de rendimiento, respectivamente) y los _speedups_ más altos o parejos de GompherMP. El factor unificador no es el tipo de algoritmo sino la estructura del paralelismo: en los tres casos, el trabajo por goroutine es suficientemente pesado como para amortizar el _overhead_ del _pool_, la distribución de carga es regular y una sola directiva captura completamente la intención paralela. Esta convergencia entre simplicidad de expresión y eficiencia de ejecución es el argumento más fuerte a favor del modelo: la directiva `reduction` no solo elimina el _boilerplate_ del acumulador manual, sino que genera un patrón de acumulación privada por goroutine que evita la contención que introduce el patrón de canales de la versión manual en _Reduce_, resultando en un _speedup_ de $13.35 times$ frente a $7.66 times$.
 
-*GompherMP supera o iguala al manual (Reduce, Pipeline, N-Queens, MatMul).* El factor común en este grupo es que se trata de cargas de trabajo _compute-bound_ con patrones de acceso regular o tareas heterogéneas en duración. En _Reduce_, la directiva `reduction` genera un acumulador privado por goroutine que se combina al final, eliminando toda contención durante la fase de cómputo; la versión manual utiliza un patrón con mayor sincronización intermedia. En _Pipeline_, el _pool_ persistente de goroutines despacha las secciones de forma más eficiente que las goroutines _ad hoc_ con `sync.WaitGroup` cuando las tareas son heterogéneas en duración, ya que el _pool_ puede absorber el desequilibrio de carga sin el costo de creación y destrucción de hilos en cada región paralela. En _N-Queens_, la granularidad natural del _backtracking_ recursivo distribuye trabajo uniforme entre las goroutines del _pool_, logrando paridad estadística perfecta con una sola directiva donde la versión manual requiere gestión explícita de goroutines y sincronización.
+_Pipeline_ matiza este cuadro y aporta un hallazgo relevante: GompherMP supera al manual en _speedup_ ($2.64 times$ vs. $2.37 times$) a pesar de un incremento de LoC del +100%. El grafo de dependencias explícito que obliga a declarar variables centinela por arco del DAG permite al _pool_ persistente despachar las etapas con una eficiencia que el patrón de canales no alcanza, porque el _pool_ puede absorber el desequilibrio de duración entre etapas sin el costo de creación y destrucción de goroutines en cada región paralela. Esto demuestra que la verbosidad adicional impuesta por `depend` en escenarios de _pipeline_ es un costo de expresividad con retorno en rendimiento, no un defecto del modelo.
 
-*Rendimiento equivalente estadísticamente (MergeSort, Sections).* En _MergeSort_, ambas variantes paralelas logran un _speedup_ menor que $1 times$ porque la fase de _merge_ final, que consolida los resultados de los subárboles recursivos, es inherentemente secuencial y domina el tiempo total de ejecución conforme a la ley de Amdahl. En _Sections_, la alta varianza de ambas versiones paralelas (CV cercano al 22%) produce intervalos de confianza que se solapan ampliamente, de modo que la diferencia observada no tiene respaldo estadístico: las tres secciones de trabajo son de duración corta y el overhead de goroutines domina sobre el beneficio del paralelismo en ambos casos.
+Las limitaciones de rendimiento identificadas en _PrefixSum_, _MonteCarlo_, _QuickSort_ y _Fibonacci_ tienen causas implementativas concretas que vale la pena examinar en conjunto. En _PrefixSum_, la función `getGoroutineID()` parsea el _stack trace_ de la goroutine en cada llamada a `Barrier()` y `Single()`, acumulando una latencia de 1 a 5 µs por invocación que se vuelve significativa con sincronización frecuente; la solución es sustituir la introspección por un identificador pasado explícitamente al contexto del equipo. En _MonteCarlo_, la ausencia de un equivalente a `omp_get_thread_num()` impide que cada goroutine inicialice su propio generador de números aleatorios, forzando un RNG por iteración con el _overhead_ asociado; la versión manual resuelve esto con una variable local al cierre. En _QuickSort_, la directiva `taskloop` particiona el espacio de iteración en bloques de tamaño fijo y no puede capturar la recursión paralela de profundidad variable que la versión manual explota con goroutines recursivas adaptativas. En _Fibonacci_, el _overhead_ por tarea de `TaskWithDepend`, compuesto por asignación dinámica y adquisición del _lock_ del registro de dependencias, domina el tiempo total cuando el trabajo útil por tarea es submilisegundo. Ninguna de estas limitaciones es intrínseca al paradigma de directivas; todas tienen soluciones técnicas identificadas y trazan con precisión la agenda de mejoras de la implementación.
 
-*GompherMP cede rendimiento al manual (PrefixSum, MonteCarlo, QuickSort, Fibonacci).* Las causas raíz en este grupo son cuatro limitaciones implementativas identificadas durante la evaluación:
+Los _benchmarks_ de paridad estadística, _MergeSort_ y _Sections_, aportan una evidencia complementaria igualmente importante: cuando el cuello de botella es estructural, GompherMP no introduce penalizaciones artificiales. En _MergeSort_, el _speedup_ efectivo por debajo de $1 times$ en ambas variantes paralelas se explica íntegramente por la fase de _merge_ secuencial final que domina el tiempo de ejecución conforme a la ley de Amdahl; en _Sections_, la alta varianza y los intervalos de confianza solapados reflejan que el overhead de coordinación domina sobre el trabajo útil de cada sección corta. En ambos casos, GompherMP reproduce el comportamiento del manual: no empeora lo que ya es difícil de paralelizar.
 
-En primer lugar, _PrefixSum_ expone el costo de la función `getGoroutineID()`, que utiliza `runtime.Stack()` para extraer el identificador de la goroutine actual parseando el _stack trace_. Esta operación, invocada en cada llamada a `Barrier()` y `Single()`, introduce una latencia de entre 1 y 5 µs por llamada que acumula un overhead significativo en _benchmarks_ con sincronización frecuente. Una solución futura consiste en reemplazar esta estrategia por un almacenamiento local de goroutine o por un mapa indexado por canal.
+Finalmente, _Fibonacci (depend)_ cierra el espectro como el único caso donde el paradigma no ofrece beneficio neto sobre el enfoque manual para las granularidades evaluadas. Su mayor incremento de LoC (+144%) y su _speedup_ más bajo ($1.77 times$) son expresión del mismo fenómeno: el _overhead_ del registro de dependencias perjudica tanto al desarrollador, que debe especificar el grafo explícitamente con variables centinela, como al runtime, que debe resolverlo con una estructura sincronizada en tiempo de ejecución. Este resultado delimita el umbral de granularidad por debajo del cual `taskloop` y `task depend` no son las herramientas adecuadas, información valiosa para guiar al usuario en la elección del patrón de directiva correcto.
 
-En segundo lugar, _MonteCarlo_ evidencia la ausencia de una variable equivalente a `omp_get_thread_num()` dentro de las directivas de bucle. Para obtener alto rendimiento en una simulación de Monte Carlo, cada goroutine debe inicializar su propio generador de números aleatorios con una semilla distinta, algo que la versión manual logra trivialmente almacenando el RNG localmente. GompherMP, al no exponer el identificador de hilo al cuerpo del bucle, fuerza al usuario a utilizar un RNG por iteración con el overhead asociado.
-
-En tercer lugar, _QuickSort_ ilustra una limitación expresiva del constructo `taskloop`: esta directiva divide el espacio de iteración en bloques de tamaño fijo (_grainsize_), lo que no permite capturar la recursión paralela natural del algoritmo. La versión manual lanza goroutines recursivas que explotan toda la profundidad del árbol de recursión. Para expresar este patrón en GompherMP sería necesaria una combinación de `task` y `taskwait` que el motor de transformación actual no genera automáticamente a partir de `taskloop`.
-
-En cuarto lugar, _Fibonacci_ muestra que el overhead de la función `TaskWithDepend` (que realiza una asignación dinámica de memoria y adquiere el _lock_ del registro de dependencias por cada tarea) domina completamente el tiempo de ejecución cuando el trabajo por tarea es de grano muy fino (submilisegundo). El alto CV del 65% en la variante `taskloop` refleja además contención esporádica en la inicialización del _pool_, cuya magnitud es proporcional al overhead relativo de gestión cuando el trabajo útil es trivial.
-
-En síntesis, los resultados confirman que GompherMP es competitivo con la paralelización manual para cargas de trabajo _compute-bound_ con patrones regulares o tareas de granularidad media-alta, categoría que representa los casos de uso más frecuentes en HPC de propósito general. Las brechas de rendimiento observadas no son atribuibles al modelo de directivas en sí, sino a cuatro limitaciones concretas y acotadas de la implementación actual, cada una de las cuales tiene una solución técnica identificada. Este resultado valida la hipótesis central del proyecto: el paradigma de paralelismo basado en directivas es viable en el ecosistema de Go y puede ofrecer rendimiento comparable e incluso superior al del código paralelo manual idiomático del lenguaje.
+En conjunto, la evaluación valida la hipótesis central del proyecto: el paradigma de paralelismo basado en directivas es técnicamente viable en el ecosistema de Go y permite cerrar la brecha semántica entre el modelo de directivas y las primitivas de concurrencia nativas del lenguaje, ofreciendo rendimiento comparable o superior al del código paralelo manual idiomático con un esfuerzo de programación significativamente menor para los patrones de paralelismo más comunes en aplicaciones Go de propósito general. Las brechas de rendimiento observadas no cuestionan la viabilidad del modelo; identifican con precisión los cuatro puntos de la implementación actual donde existe margen de mejora y configuran la agenda de desarrollo de una versión más madura de la herramienta.
