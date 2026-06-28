@@ -3,7 +3,7 @@ name: Compile and Release Thesis
 on:
   push:
     tags:
-      - "thesis-v*"
+      - "v*"
 
 jobs:
   compile:
