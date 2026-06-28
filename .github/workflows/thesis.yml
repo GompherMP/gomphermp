@@ -1,0 +1,27 @@
+name: Compile and Release Thesis
+
+on:
+  push:
+    tags:
+      - "thesis-v*"
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Typst
+        uses: typst-community/setup-typst@v4
+
+      - name: Compile thesis
+        run: typst compile docs/thesis/main.typ docs/thesis/thesis.pdf
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Thesis ${{ github.ref_name }}"
+          files: docs/thesis/thesis.pdf
