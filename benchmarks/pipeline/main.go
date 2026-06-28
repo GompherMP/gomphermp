@@ -74,6 +74,9 @@ func pipelineGompher(chunks [][]float64, bufs [][]float64) float64 {
 	var s0, s1, s2, s3 float64
 	var f0, f1, f2, f3 float64
 	var total float64
+	// The sentinels s0..s3 are consumed by the depend() clauses below. This blank
+	// read keeps the file compilable as plain Go (where directives are comments).
+	_, _, _, _ = s0, s1, s2, s3
 
 	//gompher taskgroup
 	{
