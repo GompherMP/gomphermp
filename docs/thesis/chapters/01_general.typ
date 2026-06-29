@@ -282,7 +282,7 @@ A continuación, se detallan las herramientas, métodos y procedimientos necesar
     [R6. Módulo de soporte para paralelismo de tareas (tasking) implementado y probado.], [*Herramientas:* Go, Neovim, VScode, Github \ *Métodos:* Metodología Kanban, TDD \ *Procedimientos:* Pruebas unitarias],
     [R7. Analizador sintáctico (Parser) de directivas GompherMP.], [*Herramientas:* Go, Neovim, VScode, Github, Go/AST, Go/test \ *Métodos:* Metodología kanban, TDD, análisis sintáctico \ *Procedimientos:* Pruebas unitarias],
     [R8. Motor de transformación del AST implementado.], [*Herramientas:* Go, Neovim, VScode, Github, Go/AST, Go/test \ *Métodos:* Metodología kanban, TDD, transformación de abstract syntax trees \ *Procedimientos:* Pruebas unitarias],
-    [R9. Herramienta GompherMP (CLI) funcional.], [*Herramientas:* Go, Neovim, VScode, Github, Cobra \ *Métodos:* Metodología kanban, TDD \ *Procedimientos:* Pruebas unitarias, pruebas de integración],
+    [R9. Herramienta GompherMP (CLI) funcional.], [*Herramientas:* Go, Neovim, VScode, Github, Go/flag \ *Métodos:* Metodología kanban, TDD \ *Procedimientos:* Pruebas unitarias, pruebas de integración],
   ),
   caption: [Herramientas, métodos y procedimientos relacionados al objetivo específico 2 y sus resultados esperados],
   kind: table,
@@ -351,9 +351,9 @@ Según el equipo de Go (s.f.), el paquete ast declara los tipos utilizados para 
 Según el equipo de Go (s.f.), el paquete testing provee el soporte para pruebas automatizadas de paquetes de Go, siendo la base para la creación de tests unitarios y _benchmarks_. Dentro de este proyecto, será una herramienta crucial para cumplir con los objetivos de evaluación, ya que se utilizará para implementar las pruebas unitarias y de integración que validarán la correctitud de los módulos de la librería de runtime y del compilador (objetivo específico 2). Asimismo, será fundamental para desarrollar la suite de _benchmarks_ necesaria para medir el rendimiento y la escalabilidad de GompherMP, tal como lo exige el objetivo específico 3.
 
 
-==== Cobra
+==== Go/flag
 
-Según Steve Francia (s.f.), Cobra es tanto una librería para crear potentes aplicaciones CLI modernas como un programa para generar aplicaciones y archivos de comandos. En el contexto de este proyecto, Cobra será la base para construir la Interfaz de Línea de Comandos (CLI) de la herramienta GompherMP, tal como se especifica en los objetivos 1 y 2. Su uso simplificará la implementación de los comandos, argumentos y opciones necesarios para que el usuario pueda transpilar su código Go de manera sencilla.
+Según el equipo de Go (s.f.), el paquete `flag` de la librería estándar implementa el análisis de las opciones de la línea de comandos. En el contexto de este proyecto, el paquete `flag` será la base para construir la Interfaz de Línea de Comandos (CLI) de la herramienta GompherMP, tal como se especifica en los objetivos 1 y 2. Al pertenecer a la librería estándar del lenguaje, su uso simplifica la definición de los comandos, argumentos y opciones necesarios para que el usuario pueda transpilar su código Go de manera sencilla, sin introducir dependencias externas a la herramienta.
 
 
 ==== C

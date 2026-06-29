@@ -22,7 +22,7 @@ siguiente cuadro agrupa sus archivos por responsabilidad:
 
 #figure(
   table(
-    columns: (auto, 1fr),
+    columns: (2fr, 3fr),
     align: (left, left),
     [*Archivo*],            [*Responsabilidad*],
     [`transformer.go`],     [Orquestador: recorre los nodos anotados, despacha cada directiva a su manejador e inyecta el import del runtime.],

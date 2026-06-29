@@ -174,63 +174,58 @@ Los resultados de la @tab:tabla-loc-comparativo permiten identificar tres patron
 *Análisis cualitativo.* Más allá del conteo de líneas, la diferencia estructural entre ambos enfoques se aprecia con mayor claridad sobre un ejemplo concreto. La @fig:fibonacci-comparativo muestra las funciones paralelas del _benchmark_ Fibonacci en sus dos variantes, elegido por ser representativo del caso intermedio: GompherMP introduce líneas adicionales (+31%) pero reestructura el código de forma significativa.
 
 #figure(
-  grid(
-    columns: (1fr, 1fr),
-    gutter: 1.2em,
-    align(top)[
-      *Versión manual* ($L_"man" = 16$ líneas)
-      ```go
-      func sumManual(data []float64) float64 {
-          p, chunk := numProcs(),
-                      len(data)/numProcs()
-          ch := make(chan float64, p)
-          for t := 0; t < p; t++ {
-              lo, hi := t*chunk, (t+1)*chunk
-              if t == p-1 {
-                  hi = len(data)
-              }
-              go func(lo, hi int) {
-                  ch <- heavySqrtSum(data, lo, hi)
-              }(lo, hi)
-          }
-          total := 0.0
-          for range p {
-              total += <-ch
-          }
-          return total
-      }
-      ```
-    ],
-    align(top)[
-      *Versión GompherMP (taskloop)* ($L_"gmp" = 21$ líneas)
-      ```go
-      func sumTaskloop(data []float64) float64 {
-          p := numProcs()
-          results := make([]float64, p)
-          chunkSize := len(data) / p
-          //gompher taskgroup
-          {
-              //gompher taskloop grainsize(1)
-              for c := 0; c < p; c++ {
-                  lo, hi := c*chunkSize,
-                            (c+1)*chunkSize
-                  if c == p-1 {
-                      hi = len(data)
-                  }
-                  results[c] = heavySqrtSum(
-                      data, lo, hi)
-              }
-          }
-          total := 0.0
-          for _, v := range results {
-              total += v
-          }
-          return total
-      }
-      ```
+  block(stroke: 1pt + luma(180), inset: 10pt, width: 100%)[
+    #align(left)[
+        *Versión manual* ($L_"man" = 16$ líneas)
+        ```go
+        func sumManual(data []float64) float64 {
+            p, chunk := numProcs(), len(data)/numProcs()
+            ch := make(chan float64, p)
+            for t := 0; t < p; t++ {
+                lo, hi := t*chunk, (t+1)*chunk
+                if t == p-1 {
+                    hi = len(data)
+                }
+                go func(lo, hi int) {
+                    ch <- heavySqrtSum(data, lo, hi)
+                }(lo, hi)
+            }
+            total := 0.0
+            for range p {
+                total += <-ch
+            }
+            return total
+        }
+        ```
+
+        #v(0.8em)
+        *Versión GompherMP (taskloop)* ($L_"gmp" = 21$ líneas)
+        ```go
+        func sumTaskloop(data []float64) float64 {
+            p := numProcs()
+            results := make([]float64, p)
+            chunkSize := len(data) / p
+            //gompher taskgroup
+            {
+                //gompher taskloop grainsize(1)
+                for c := 0; c < p; c++ {
+                    lo, hi := c*chunkSize, (c+1)*chunkSize
+                    if c == p-1 {
+                        hi = len(data)
+                    }
+                    results[c] = heavySqrtSum(data, lo, hi)
+                }
+            }
+            total := 0.0
+            for _, v := range results {
+                total += v
+            }
+            return total
+        }
+        ```
     ]
-  ),
-  caption: [Comparación de implementaciones paralelas del _benchmark_ Fibonacci. Izquierda: versión manual con goroutines y canal. Derecha: versión GompherMP con directivas `taskgroup` y `taskloop`. Los dos comentarios `//gompher` son las únicas anotaciones de paralelismo.],
+  ],
+  caption: [Comparación de implementaciones paralelas del _benchmark_ Fibonacci. Arriba: versión manual con goroutines y canal. Abajo: versión GompherMP con directivas `taskgroup` y `taskloop`. Los dos comentarios `//gompher` son las únicas anotaciones de paralelismo.],
   kind: image,
 ) <fig:fibonacci-comparativo>
 

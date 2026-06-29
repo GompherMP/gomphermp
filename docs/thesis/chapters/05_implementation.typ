@@ -24,9 +24,9 @@ La suite de pruebas asociada al módulo se compone de pruebas unitarias que cubr
 
 Para este resultado, se implementó el módulo de mecanismos de sincronización, responsable de coordinar la ejecución de las goroutines dentro de una región paralela. Este módulo provee las primitivas que el código transformado utiliza para implementar las directivas de sincronización especificadas en R1, garantizando la consistencia de los accesos a memoria compartida y la correcta orquestación de bloques de ejecución exclusivos.
 
-La implementación reside en el archivo `sync.go` del paquete `pkg/runtime/` y expone cuatro funciones públicas que cubren los mecanismos de sincronización del subconjunto OpenMP soportado. La función `Critical` garantiza exclusión mutua sobre un bloque de código, soportando tanto la modalidad anónima (mediante un mutex global compartido) como la modalidad nominal (mediante mutexes asociados a un identificador). La función `Single` garantiza que el cuerpo se ejecute exactamente una vez dentro de un equipo: el primer goroutine que gana una operación atómica de comparación e intercambio (_compare-and-swap_) sobre un testigo del equipo ejecuta el bloque, y la barrera implícita que cierra la construcción reinicia dicho testigo para la siguiente región. La función `Master` ejecuta condicionalmente un bloque únicamente en la goroutine maestra del equipo, sin imponer una barrera implícita posterior. Finalmente, la función `Barrier` establece un punto de sincronización explícito mediante un grupo de espera dimensionado al tamaño del equipo, garantizando que ninguna goroutine continúe su ejecución hasta que todas hayan alcanzado el punto.
+La implementación reside en el archivo `sync.go` del paquete `pkg/runtime/` y expone cuatro funciones públicas que cubren los mecanismos de sincronización del subconjunto OpenMP soportado. La función `Critical` garantiza exclusión mutua sobre un bloque de código, soportando tanto la modalidad anónima (mediante un mutex global compartido) como la modalidad nominal (mediante mutexes asociados a un identificador). La función `Single` garantiza que el cuerpo se ejecute exactamente una vez dentro de un equipo: el primer goroutine que gana una operación atómica de comparación e intercambio (_compare-and-swap_) sobre un testigo del equipo ejecuta el bloque, y la barrera implícita que cierra la construcción reinicia dicho testigo para la siguiente región. La función `Master` ejecuta condicionalmente un bloque únicamente en la goroutine maestra del equipo, sin imponer una barrera implícita posterior. Finalmente, la función `Barrier` establece un punto de sincronización explícito y reutilizable para el equipo, construido sobre una variable de condición (`sync.Cond`) y un contador de generación, de modo que ninguna goroutine continúe su ejecución hasta que todas hayan alcanzado el punto y la misma barrera pueda emplearse de nuevo en las sucesivas construcciones de una región paralela.
 
-El diseño del módulo se apoya en las primitivas de sincronización de la librería estándar de Go, específicamente `sync.Mutex` y `sync.WaitGroup`, complementadas con operaciones atómicas del paquete `sync/atomic` para la elección del ejecutor en las construcciones de bloque único. Esta decisión permite delegar al runtime nativo del lenguaje las garantías de orden de memoria requeridas por el modelo de concurrencia, evitando duplicar mecanismos de bajo nivel ya provistos por el ecosistema.
+El diseño del módulo se apoya en las primitivas de sincronización de la librería estándar de Go, específicamente `sync.Mutex` y `sync.Cond`, complementadas con operaciones atómicas del paquete `sync/atomic` para la elección del ejecutor en las construcciones de bloque único. Esta decisión permite delegar al runtime nativo del lenguaje las garantías de orden de memoria requeridas por el modelo de concurrencia, evitando duplicar mecanismos de bajo nivel ya provistos por el ecosistema.
 
 La suite de pruebas del módulo verifica el comportamiento correcto de cada primitiva sobre regiones paralelas reales, incluyendo casos de protección contra condiciones de carrera (mediante incrementos concurrentes sobre contadores compartidos), independencia entre locks nombrados, exclusividad del bloque maestro respecto a las goroutines no maestras, ausencia de barrera implícita en `Master`, y comportamiento correcto del `Barrier` bajo distintos tamaños de equipo. Adicionalmente, se incluyen pruebas de tiempo límite que detectan posibles bloqueos por errores de implementación. La cobertura de instrucciones alcanzada sobre el módulo es del 100%, verificada mediante la herramienta nativa `go tool cover`. El código fuente completo y el informe técnico de cobertura se encuentran disponibles en el repositorio en línea del proyecto, referenciado en el Anexo G, y en el Anexo I respectivamente.
 
@@ -80,8 +80,79 @@ A modo de ilustración, la Figura 9 muestra un extracto del informe de cobertura
 ) <fig:figura-5-4-extracto-del-inform>
 
 
+== R8: Motor de transformación del AST
+
+El motor de transformación es el componente central del compilador GompherMP. Recibe la representación intermedia tipada que produce el analizador sintáctico y, por cada directiva reconocida, reescribe el árbol sintáctico abstracto (AST) sustituyendo el nodo anotado por las llamadas a la librería de runtime que materializan su semántica. El resultado es un AST equivalente que, una vez serializado, constituye un programa Go nativo compilable con el _toolchain_ estándar, sin modificación alguna al compilador del lenguaje.
+
+La implementación reside en el directorio `internal/transformer/` del repositorio y se organiza por responsabilidades. Un orquestador (`transformer.go`) recorre los nodos anotados, despacha cada directiva a su manejador e inyecta el _import_ del runtime. Un manejador por construcción (`parallel.go`, `loop.go`, `sections.go`, `single.go`, `master.go`, `critical.go`, `barrier.go`, `atomic.go`, `task.go` y `taskloop.go`) realiza la reescritura específica de cada directiva. La lógica de las cláusulas de gestión de datos (`clauses.go`), el análisis y normalización de la forma canónica de los bucles (`loopform.go`) y la resolución de tipos mediante la librería estándar `go/types` (`typeinfo.go`) concentran la lógica transversal compartida por varios manejadores. Finalmente, los constructores y mutadores de bajo nivel del AST (`astbuild.go`, `astreplace.go` e `imports.go`) proveen las operaciones primitivas de construcción y sustitución de nodos.
+
+Para cada nodo anotado, el motor ejecuta cuatro etapas: el despacho de la directiva hacia su manejador; el análisis del nodo para extraer la información necesaria (variable de inducción y forma del bucle, lista de cláusulas, nombre de la región crítica, entre otros); la construcción de los nodos de reemplazo (la _closure_ con el cuerpo original, las declaraciones de las copias privadas, las capturas previas y la llamada de runtime); y la sustitución del nodo objetivo en el AST junto con la eliminación del comentario consumido.
+
+Más allá de la sustitución directa, el motor implementa las cinco cláusulas de gestión de datos resolviendo el tipo de cada variable con `go/types`, de modo que funciona incluso cuando el tipo se infiere de una asignación corta. La cláusula `private` declara una copia local de valor cero. La cláusula `firstprivate` captura el valor externo una vez antes de la región y lo usa para inicializar la copia. En cuanto a`shared`, no tiene un código específico, pues las _closures_ de Go capturan por referencia. `lastprivate` captura la dirección de la variable y la escribe de vuelta desde la última iteración o sección. `reduction` acumula sobre una copia privada inicializada con la identidad del operador y combina los parciales bajo una sección crítica, admitiendo siete operadores (`+`, `-`, `*`, `&&`, `||`, `max` y `min`). La directiva `atomic` traduce las operaciones de actualización, escritura y lectura a las primitivas atómicas del runtime. Adicionalmente, las directivas de bucle admiten cualquier bucle en forma canónica y no únicamente la forma `for i := 0; i < N; i++`: cuando la forma no es la estrecha, el motor la normaliza sobre el espacio de índices `[0, N)` que distribuye el runtime, reconstruyendo la variable de inducción del usuario al inicio del cuerpo, tal como un compilador de OpenMP baja un bucle canónico.
+
+La siguiente figura ilustra la reescritura para el caso de un bucle paralelo con reducción, mostrando el código anotado de entrada y la llamada de runtime sintetizada.
+
+#figure(
+  block(stroke: 1pt + luma(180), inset: 10pt, width: 100%)[
+    #align(left)[
+      *Código anotado de entrada*
+      ```go
+      sum := 0
+      //gompher parallel for reduction(+:sum)
+      for i := 0; i < n; i++ {
+          sum += f(i)
+      }
+      ```
+
+      #v(0.8em)
+      *Código transpilado de salida*
+      ```go
+      sum := 0
+      _red_sum := &sum
+      runtime.Parallel(func(threadID int) {
+          var sum int = 0
+          runtime.For(threadID, func(i int) {
+              sum += f(i)
+          }, n)
+          runtime.Critical("", func() {
+              *_red_sum += sum
+          })
+      })
+      ```
+    ]
+  ],
+  caption: [Reescritura de un bucle paralelo con reducción por el motor de transformación],
+  kind: image,
+) <fig:transformer-ejemplo>
+
+Las pruebas asociadas al módulo se componen de ciento noventa pruebas organizadas por directiva y por la maquinaria transversal que comparten (constructores y mutadores de AST, resolución de tipos y cláusulas de datos), e incluyen escenarios de extremo a extremo que transpilan y compilan el programa resultante para confirmar que el _toolchain_ estándar de Go lo acepta. La cobertura de instrucciones alcanzada sobre el módulo es del 98.5%, verificada mediante la herramienta nativa `go tool cover`. La fracción no cubierta corresponde a guardas defensivas para condiciones que el flujo de ejecución no alcanza en operación normal. El informe técnico completo se encuentra en el Anexo M.
+
+#figure(
+  image("../figures/fig5_5_coverage_transformer.png"),
+  caption: [Extracto del mapeo entre cada directiva y la llamada del runtime como parte del informe de cobertura del motor de transformación del AST],
+) <fig:cobertura-transformer>
+
+== R9: Herramienta GompherMP (CLI)
+
+La interfaz de línea de comandos es el ejecutable que el usuario invoca para transpilar y compilar un programa. Coordina, en orden, a los módulos de la herramienta: lee el código fuente, lo entrega al analizador sintáctico, valida las reglas contextuales, aplica la transformación del AST, serializa el resultado a un archivo Go y finalmente invoca al compilador estándar de Go para producir el binario. La interfaz oculta estos pasos intermedios y expone una única operación de construcción.
+
+La implementación reside en el paquete `cmd/gompher/` del repositorio y se apoya en el paquete `flag` de la librería estándar de Go para el análisis de las opciones, sin dependencias externas. El comando se invoca como `gompher build \<archivo.go\>` y admite las banderas `-o` (ruta del binario de salida), `-v` (modo detallado, que imprime las fases del flujo y las directivas detectadas), `-k` (conservar el archivo Go intermedio generado), `-h` (ayuda) y `--version`.
+
+El comando de construcción ejecuta una secuencia de seis fases; cualquiera que falle detiene el flujo, emite un mensaje de error descriptivo y termina con un código de salida. Las fases incluyen la lectura, que valida la extensión y la existencia del archivo de entrada; el análisis, que extrae las directivas mediante el módulo Parser; la validación de las reglas contextuales; la transformación del AST; la serialización del AST transformado a un archivo Go temporal; y la compilación, que invoca al compilador estándar de Go sobre dicho archivo para producir el binario. El archivo temporal se elimina al finalizar, salvo que se solicite conservarlo.
+
+Las pruebas asociadas al módulo se componen de veinte pruebas que ejercitan la interfaz a través de su punto de entrada testeable, capturando el código de salida y la salida de texto. Cubren el despacho de comandos, la validación de argumentos y opciones, cada modo de error de las fases, y un conjunto de pruebas de extremo a extremo que ejecutan el flujo completo, incluida la invocación real al compilador de Go, para confirmar que un programa anotado se transpila y compila correctamente. La cobertura de instrucciones alcanzada sobre el módulo es del 90.4%, verificada mediante la herramienta nativa `go tool cover`. La fracción no cubierta corresponde a la función envoltorio `main` y a ramas de manejo de fallos de entrada y salida que no se reproducen de forma portable en una prueba. En la siguiente figura, se muestra un extracto del informe de la CLI, pero el informe técnico completo se encuentra en el Anexo N.
+
+#figure(
+  image("../figures/fig5_6_coverage_cli.png"),
+  caption: [Extracto del informe de cobertura de la interfaz de línea de comandos],
+) <fig:cobertura-cli>
+
 == Discusión de resultados
 
 La implementación del OE2 confirma en la práctica que las decisiones de diseño formuladas en el OE1 son viables. Al construir el runtime utilizando únicamente las herramientas de concurrencia que la librería estándar de Go ya provee (mutexes, grupos de espera y goroutines), se evidencia que el lenguaje ofrece todos los componentes necesarios para soportar un conjunto representativo de las construcciones del estándar OpenMP. La verificación de los módulos mediante el detector de carreras nativo (`go test -race`) bajo escenarios de estrés con miles de iteraciones y contención máxima sobre estructuras compartidas confirma adicionalmente que las garantías de orden de memoria provistas por la librería estándar son suficientes para implementar primitivas de paralelismo correctas, evitando la introducción de las condiciones de carrera y bloqueos que típicamente afectan la implementación manual del paralelismo en este tipo de lenguajes.
 
-Por su parte, el módulo Parser materializa el principio de "fallo temprano" propio de los frontends de compiladores robustos. Las cuatro categorías de validación semántica implementadas (compatibilidad del tipo de nodo objetivo, adyacencia comentario-bloque, contexto jerárquico de directivas anidadas y exigencia de listas no vacías para cláusulas de variables) aseguran que cualquier inconsistencia se detecte y reporte durante el análisis sintáctico, antes que el motor de transformación intente operar sobre estructuras inválidas y produzca errores de difícil diagnóstico. No obstante, el modelo de comentarios con valor semántico (\/\/gompher) hereda una fragilidad inherente al paradigma OpenMP: la dependencia estricta de la adyacencia física entre el comentario y su nodo objetivo, que puede ser interrumpida por líneas en blanco u otros comentarios intercalados. Este compromiso constituye una tensión inevitable al utilizar metadatos textuales como portadores de semántica de ejecución, y refuerza la necesidad de que la documentación dirigida al usuario final enfatice con claridad las reglas de uso correcto de cada directiva.
+Por su parte, el módulo Parser materializa el principio de "fallo temprano" propio de los frontends de compiladores robustos. Las cuatro categorías de validación semántica implementadas (compatibilidad del tipo de nodo objetivo, adyacencia comentario-bloque, contexto jerárquico de directivas anidadas y exigencia de listas no vacías para cláusulas de variables) aseguran que cualquier inconsistencia se detecte y reporte durante el análisis sintáctico, antes que el motor de transformación intente operar sobre estructuras inválidas y produzca errores de difícil diagnóstico. No obstante, el modelo de comentarios con valor semántico (\/\/gompher) hereda una fragilidad inherente al paradigma OpenMP: la dependencia estricta de la adyacencia física entre el comentario y su nodo objetivo, que puede ser interrumpida por líneas en blanco u otros comentarios intercalados. Esta limitación inherente constituye una tensión inevitable al utilizar metadatos textuales como portadores de semántica de ejecución, y refuerza la necesidad de que la documentación dirigida al usuario final enfatice con claridad las reglas de uso correcto de cada directiva.
+
+El motor de transformación valida en la práctica la elección de una arquitectura _source-to-source_ sobre el AST nativo de Go. Al delegar tanto el análisis sintáctico (`go/parser`) como la resolución de tipos (`go/types`) a la librería estándar, el motor evita reimplementar componentes complejos del frontend del lenguaje y garantiza que el código emitido sea Go idiomático, portable y compilable por el _toolchain_ estándar sin modificación alguna. Las decisiones de implementación más delicadas se concentraron en las cláusulas de gestión de datos: la técnica de captura por puntero para `reduction` y `lastprivate` permite materializar la semántica de copia privada y de combinación sin renombrar las variables del cuerpo del usuario, preservando la legibilidad del código generado. Además, la normalización de la forma canónica de los bucles reproduce la estrategia de los compiladores de OpenMP, lo cual amplía las formas admitidas más allá del caso estrecho sin sacrificar la corrección. La limitación asumida es que el archivo generado constituye un artefacto de compilación intermedio, cuyos comentarios se descartan para evitar defectos conocidos de reposicionamiento de `go/printer`, de modo que la trazabilidad para el usuario recae sobre el código fuente anotado original y no sobre la salida transpilada.
+
+Finalmente, la herramienta CLI integra los módulos anteriores en un único flujo coherente y materializa el objetivo central de GompherMP: transformar un archivo `.go` anotado en un binario nativo mediante una sola invocación. El principio de fallo temprano del frontend se extiende hasta este nivel, pues cada fase del flujo (lectura, análisis, validación, transformación, serialización y compilación) reporta su fallo con un mensaje específico y un código de salida distinto de cero. En cuanto a las pruebas de integración de extremo a extremo, constituyen la verificación más relevante del objetivo, pues confirman empíricamente que el código generado es aceptado sin modificaciones por el _toolchain_ del lenguaje anfitrión.

@@ -271,3 +271,15 @@ Este anexo presenta las curvas de _speedup_ en función del numero de procesador
   image("../figures/bench_reduce.png"),
   caption: [Escalabilidad de Reduce: speedup en funcion de $P$ para las variantes Manual y GompherMP.],
 ) <fig:bench-reduce>
+
+== Anexo M. Informe de cobertura del motor de transformación del AST
+
+Este anexo contiene el informe técnico de cobertura de pruebas del motor de transformación del AST correspondiente al resultado R8. El documento detalla la suite completa de pruebas ejecutada, el mapeo entre cada directiva del lenguaje y la llamada de runtime que el motor emite, la técnica de transformación de las cláusulas de gestión de datos y de la directiva `atomic`, la normalización de la forma canónica de los bucles y los resultados cuantitativos obtenidos mediante las herramientas nativas de cobertura de Go.
+
+#link("https://drive.google.com/drive/folders/1rvfklTv6m22-Axfs09lNGi6LGV-c2IIc?usp=sharing")
+
+== Anexo N. Informe de cobertura de la interfaz de línea de comandos
+
+Este anexo contiene el informe técnico de cobertura de pruebas de la interfaz de línea de comandos correspondiente al resultado R9. El documento detalla la suite completa de pruebas ejecutada, los comandos y opciones soportados, los modos de error verificados de cada fase del flujo de construcción, las pruebas de integración de extremo a extremo que invocan al compilador de Go y los resultados cuantitativos obtenidos mediante las herramientas nativas de cobertura de Go.
+
+#link("https://drive.google.com/drive/folders/1pqQCFNtWcXQCNUZPPHeaFRQG89jR5qSJ?usp=sharing")

@@ -52,7 +52,7 @@ forma directa, sin remapeo ni sobrecosto.
 
 #figure(
   table(
-    columns: (auto, 1fr),
+    columns: (1fr, 1fr),
     align: (left, left),
     [*Forma del bucle*], [*Tratamiento*],
     [`for i := 0; i < N; i++`], [Forma simple: el contador es la propia variable de inducción y el conteo es `N`.],

@@ -13,7 +13,35 @@
 
   // Inline/block code: a monospace font slightly smaller so it sits well next
   // to Times New Roman. Falls back to DejaVu Sans Mono if Consolas is missing.
-  show raw: set text(font: ("Consolas", "DejaVu Sans Mono"), size: 0.92em)
+  show raw: set text(font: ("Consolas", "DejaVu Sans Mono"), size: 0.95em)
+
+  // Block code
+  show raw.where(block: true): it => block(
+    fill: luma(240),
+    inset: 12pt,
+    radius: 4pt,
+    width: 100%,
+  )[
+    #let lines = it.text.split("\n")
+    #grid(
+      columns: (auto, 1fr),
+      align: (right, left),
+      column-gutter: 1em,
+      row-gutter: 0.5em,
+      ..lines.enumerate().map(((i, line)) => (
+        text(fill: gray, size: 0.8em)[#(i + 1)],
+        raw(line, lang: it.lang),
+      )).flatten()
+    )
+  ]
+
+  // Image figures: a thin gray border around the picture so screenshots
+  // and charts are visually delimited from the page. 
+  show image: it => if it.source.contains("logo") {
+    it
+  } else {
+    box(stroke: 1pt + luma(180), it)
+  }
 
   set heading(numbering: (..nums) => {
     let n = nums.pos()
@@ -27,6 +55,10 @@
 
   set figure.caption(separator: [. ])
   set figure(numbering: "1")
+
+  // Extra breathing room above and below figures so the caption is not cramped
+  // against the surrounding paragraphs.
+  show figure: set block(above: 2em, below: 2em)
 
   show heading.where(level: 1): it => {
     pagebreak(weak: true)
@@ -65,13 +97,16 @@
     it
   }
 
+  // Code-comparison figures can exceed a page. Allow them to break across pages.
+  show figure.where(kind: image): set block(breakable: true)
+
   // Outline entries: fixed 1.5em indent per level, uniform weight. The default
   // indented() aligns bodies by sibling prefix width, which misaligned "Anexos"
-  // (numbered children) vs "Referencias" (none).
+  // and "Referencias".
   //
   // Show the prefix only if it has real content: chapters use a numbering
-  // function that returns nothing at level 1, giving an EMPTY prefix ([], not
-  // none); without this check it got an extra h(0.5em) and shifted right.
+  // function that returns nothing at level 1, giving an empty prefix.
+  // Without this check it got an extra h(0.5em) and shifted right.
   show outline.entry: it => {
     set text(weight: "regular")
     let prefix = it.prefix()

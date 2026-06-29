@@ -1,7 +1,6 @@
 
 = Referencias
 
-// APA: hanging indent (1.27 cm / 0.5 in) and left alignment (not justified).
 #set par(hanging-indent: 1.27cm, justify: false)
 
 Aho, A. V., Lam, M. S., Sethi, R., & Ullman, J. D. (2007). _Compilers: Principles, Techniques, and Tools_ (2nd ed.). Pearson/Addison Wesley.
@@ -43,8 +42,6 @@ Fan, W., He, T., Lai, L., Li, X., Li, Y., Li, Z., Qian, Z., Tian, C., Wang, L., 
 Fan, X., Mehrabi, M., Sinnen, O., et al. (2017). Supporting enhanced exception handling with OpenMP in object-oriented languages. _International Journal of Parallel Programming, 45_, 1366-1389. #link("https://doi.org/10.1007/s10766-016-0474-x")
 
 Fernandez, R. C., Garefalakis, P., & Pietzuch, P. (2016). Java2SDG: Stateful big data processing for the masses. En _2016 IEEE 32nd International Conference on Data Engineering (ICDE)_ (pp. 1390-1393). IEEE. #link("https://doi.org/10.1109/ICDE.2016.7498352")
-
-Francia, S. (s.f.). _Cobra_. Cobra.dev. Recuperado el 12 de octubre de 2025, de #link("https://cobra.dev/")
 
 GitHub. (s.f.). _About GitHub_. GitHub. Recuperado el 12 de octubre de 2025, de #link("https://github.com/about")
 
@@ -109,6 +106,8 @@ Sommerville, I. (2011). _Software engineering_ (9th ed.). Pearson.
 The Go Programming Language (s.f.). _The Go Programming Language_. Go.dev. Recuperado el 12 de octubre de 2025, de #link("https://go.dev/")
 
 The Go Programming Language. (s. f.). _Effective Go_. Recuperado el 12 de octubre de 2025, de #link("https://go.dev/doc/effective_go")
+
+The Go Programming Language. (s. f.). _flag package (Go standard library)_. Recuperado el 12 de octubre de 2025, de #link("https://pkg.go.dev/flag")
 
 The Go Programming Language. (s. f.). _sync package (Go standard library)_. Recuperado el 12 de octubre de 2025, de #link("https://pkg.go.dev/sync")
 
