@@ -6,7 +6,7 @@ NPROC=$(nproc)
 BENCHMARKS="matmul prefixsum mergesort heavyreduce sections quicksort pipeline nqueens montecarlo reduce"
 
 echo "═══════════════════════════════════════════════════════════════" >&2
-echo "  GompherMP Benchmark Suite  —  seq / manual / gompher" >&2
+echo "  GompherMP Benchmark Suite  -  seq / manual / gompher" >&2
 echo "  CPU: $(grep 'model name' /proc/cpuinfo | head -1 | cut -d: -f2 | xargs)" >&2
 echo "  Cores: $NPROC" >&2
 echo "═══════════════════════════════════════════════════════════════" >&2
