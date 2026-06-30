@@ -28,9 +28,10 @@ C_GMP2   = '#F07D1B'    # orange  (second GMP variant: task_depend)
 C_IDEAL  = '#AAAAAA'    # gray
 PROCS    = [1, 2, 4, 8, 16]
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CSV_PATH  = os.path.join(REPO_ROOT, 'benchmark_results.csv')
-FIG_DIR   = os.path.join(REPO_ROOT, 'docs', 'thesis', 'figures')
+REPO_ROOT    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CSV_PATH     = os.path.join(REPO_ROOT, 'benchmark_results.csv')
+LOC_CSV_PATH = os.path.join(REPO_ROOT, 'loc_results.csv')
+FIG_DIR      = os.path.join(REPO_ROOT, 'docs', 'thesis', 'figures')
 
 # ── Global style ──────────────────────────────────────────────────────────────
 plt.rcParams.update({
@@ -229,21 +230,11 @@ def fig_bench(bench, title, variants):
 
 # ── Figure: loc_comparison.png ───────────────────────────────────────────────
 def fig_loc_comparison():
-    # (label, loc_manual, loc_gompher)
-    # Ordered: most reduction (bottom) → most increase (top)
-    data = [
-        ('Reduce',               34, 10),
-        ('MonteCarlo',           26, 11),
-        ('PrefixSum',            55, 27),
-        ('MatMul',               24, 12),
-        ('Sections',             26, 26),
-        ('MergeSort',            24, 26),
-        ('QuickSort',            21, 23),
-        ('HeavyReduce (taskloop)', 16, 21),
-        ('N-Queens',             14, 19),
-        ('Pipeline',             27, 54),
-        ('HeavyReduce (depend)',   16, 39),
-    ]
+    # Ordered: most reduction (bottom) → most increase (top), as in loc_results.csv
+    data = []
+    with open(LOC_CSV_PATH, newline='') as f:
+        for row in csv.DictReader(f):
+            data.append((row['benchmark'], int(row['loc_manual']), int(row['loc_gompher'])))
 
     labels  = [d[0] for d in data]
     loc_man = np.array([d[1] for d in data], dtype=float)

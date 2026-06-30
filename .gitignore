@@ -4,3 +4,4 @@ gompher
 .direnv/
 .envrc
 benchmark_results.csv
+loc_results.csv
