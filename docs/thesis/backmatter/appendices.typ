@@ -238,9 +238,9 @@ Este anexo presenta las curvas de _speedup_ en función del numero de procesador
 ) <fig:bench-mergesort>
 
 #figure(
-  image("../figures/bench_fibonacci.png"),
-  caption: [Escalabilidad de Fibonacci: speedup en funcion de $P$ para Manual, GompherMP (taskloop) y GompherMP (depend).],
-) <fig:bench-fibonacci>
+  image("../figures/bench_heavyreduce.png"),
+  caption: [Escalabilidad de HeavyReduce: speedup en funcion de $P$ para Manual, GompherMP (taskloop) y GompherMP (depend).],
+) <fig:bench-heavyreduce>
 
 #figure(
   image("../figures/bench_sections.png"),

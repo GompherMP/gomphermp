@@ -164,10 +164,10 @@ func main() {
 		timesLoop[r] = time.Since(t0)
 	}
 
-	printCSV("fibonacci", "seq", timesSeq)
-	printCSV("fibonacci", "manual", timesMan)
-	printCSV("fibonacci", "task_depend", timesDep)
-	printCSV("fibonacci", "taskloop", timesLoop)
+	printCSV("heavyreduce", "seq", timesSeq)
+	printCSV("heavyreduce", "manual", timesMan)
+	printCSV("heavyreduce", "task_depend", timesDep)
+	printCSV("heavyreduce", "taskloop", timesLoop)
 
 	eps := rs * 1e-6
 	tSeq, tSeqStd := durMean(timesSeq), durStd(timesSeq, durMean(timesSeq))

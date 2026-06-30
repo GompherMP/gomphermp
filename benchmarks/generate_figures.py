@@ -102,8 +102,8 @@ def fig_speedup_p16():
         ('montecarlo', 'gompher',     'MonteCarlo'),
         ('quicksort',  'gompher',     'QuickSort'),
         ('prefixsum',  'gompher',     'PrefixSum'),
-        ('fibonacci',  'taskloop',    'Fibonacci (taskloop)'),
-        ('fibonacci',  'task_depend', 'Fibonacci (depend)'),
+        ('heavyreduce',  'taskloop',    'HeavyReduce (taskloop)'),
+        ('heavyreduce',  'task_depend', 'HeavyReduce (depend)'),
     ]
 
     labels = [it[2] for it in items]
@@ -171,7 +171,7 @@ BENCH_CONFIGS = [
         ('manual',   'Manual',    C_MANUAL, '-o'),
         ('gompher',  'GompherMP', C_GMP,    '-s'),
     ]),
-    ('fibonacci', 'Fibonacci', [
+    ('heavyreduce', 'HeavyReduce', [
         ('manual',      'Manual',               C_MANUAL, '-o'),
         ('taskloop',    'GompherMP (taskloop)',  C_GMP,    '-s'),
         ('task_depend', 'GompherMP (depend)',    C_GMP2,   '-^'),
@@ -239,10 +239,10 @@ def fig_loc_comparison():
         ('Sections',             26, 26),
         ('MergeSort',            24, 26),
         ('QuickSort',            21, 23),
-        ('Fibonacci (taskloop)', 16, 21),
+        ('HeavyReduce (taskloop)', 16, 21),
         ('N-Queens',             14, 19),
         ('Pipeline',             27, 54),
-        ('Fibonacci (depend)',   16, 39),
+        ('HeavyReduce (depend)',   16, 39),
     ]
 
     labels  = [d[0] for d in data]

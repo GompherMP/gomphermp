@@ -3,7 +3,7 @@ set -e
 GOMPHER=${1:-../gompher}
 CSV_OUT=${2:-benchmark_results.csv}
 NPROC=$(nproc)
-BENCHMARKS="matmul prefixsum mergesort fibonacci sections quicksort pipeline nqueens montecarlo reduce"
+BENCHMARKS="matmul prefixsum mergesort heavyreduce sections quicksort pipeline nqueens montecarlo reduce"
 
 echo "═══════════════════════════════════════════════════════════════" >&2
 echo "  GompherMP Benchmark Suite  —  seq / manual / gompher" >&2
