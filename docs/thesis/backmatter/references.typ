@@ -79,6 +79,8 @@ _Neovim_. (s.f.). Neovim. Recuperado el 12 de octubre de 2025, de #link("https:/
 
 OpenMP Architecture Review Board. (s.f.). _What is OpenMP?_. OpenMP.org. Recuperado el 12 de octubre de 2025, de #link("https://www.openmp.org/")
 
+OpenMP Architecture Review Board. (2021). _OpenMP application programming interface, version 5.2_. OpenMP.org. #link("https://www.openmp.org/wp-content/uploads/OpenMP-API-Specification-5-2.pdf")
+
 Pacheco, P. S., & Malensek, M. (2022). _An Introduction to Parallel Programming_ (2nd ed.). Morgan Kaufmann.
 
 Perugini, A., & Kosmidis, L. (2025). Evaluation of the parallel features of Rust for space systems. _Open Access Series in Informatics (OASIcs), 127_, 5:1-5:20. #link("https://doi.org/10.4230/OASIcs.PARMA-DITAM.2025.5")
