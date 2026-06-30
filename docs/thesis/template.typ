@@ -1,6 +1,7 @@
 #let thesis-template(body) = {
   set document(
     title: "Implementación de paralelismo basado en directivas adaptando el estándar OpenMP al lenguaje Go",
+    date: datetime(year: 2026, month: 6, day: 29),
   )
   set page(
     paper: "a4",

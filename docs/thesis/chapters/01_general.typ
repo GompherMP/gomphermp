@@ -343,7 +343,7 @@ Según GitHub (s.f.), GitHub es la plataforma de desarrollo completa para constr
 
 ==== Go/AST
 
-Según el equipo de Go (s.f.), el paquete ast declara los tipos utilizados para representar árboles de sintaxis abstracta para archivos de código Go. En este proyecto, este paquete es fundamental para el compilador _source-to-source_, ya que su función principal es analizar el código fuente, interpretar las directivas y transformar el Árbol de Sintaxis Abstracta (AST) para generar código Go nativo concurrente. La capacidad de manipular directamente la estructura del código a través del AST es, por lo tanto, esencial para cumplir con el objetivo específico 3 del proyecto.
+Según el equipo de Go (s.f.), el paquete ast declara los tipos utilizados para representar árboles de sintaxis abstracta para archivos de código Go. En este proyecto, este paquete es fundamental para el compilador _source-to-source_, ya que su función principal es analizar el código fuente, interpretar las directivas y transformar el Árbol de Sintaxis Abstracta (AST) para generar código Go nativo concurrente. La capacidad de manipular directamente la estructura del código a través del AST es, por lo tanto, esencial para cumplir con el objetivo específico 2 del proyecto.
 
 
 ==== Go/test
@@ -387,7 +387,7 @@ Según Bass et al. (2012), una arquitectura centrada en componentes se enfoca en
 
 ==== Metodología Kanban
 
-De acuerdo con Anderson (2010), Kanban es una metodología para gestionar el flujo de trabajo que se centra en la visualización del trabajo, la limitación del trabajo en progreso y la maximización de la eficiencia. Para la gestión de este proyecto, se utilizará un tablero Kanban para organizar y priorizar las tareas asociadas a los cuatro objetivos específicos, desde el diseño de la arquitectura hasta la evaluación final, permitiendo un seguimiento transparente del avance y una adaptación continua a los desafíos que surjan durante el desarrollo.
+De acuerdo con Anderson (2010), Kanban es una metodología para gestionar el flujo de trabajo que se centra en la visualización del trabajo, la limitación del trabajo en progreso y la maximización de la eficiencia. Para la gestión de este proyecto, se utilizará un tablero Kanban para organizar y priorizar las tareas asociadas a los tres objetivos específicos, desde el diseño de la arquitectura hasta la evaluación final, permitiendo un seguimiento transparente del avance y una adaptación continua a los desafíos que surjan durante el desarrollo.
 
 
 ==== Desarrollo guiado por pruebas (TDD)

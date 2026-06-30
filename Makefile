@@ -1,5 +1,6 @@
 BINARY_NAME=gompher
 MAIN_PATH=./cmd/gompher/main.go
+THESIS_PATH=./docs/thesis
 
 all: build test
 
@@ -18,6 +19,9 @@ install: build
 
 benchmark: build
 	bash benchmarks/run.sh ./$(BINARY_NAME)
+
+thesis:
+	typst compile $(THESIS_PATH)/main.typ
 
 clean:
 	rm -f $(BINARY_NAME)
