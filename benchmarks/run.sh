@@ -30,7 +30,7 @@ echo "" >&2
 echo "─── Scalability sweep ────────────────────────────────────────" >&2
 for p in 1 2 4 8 $NPROC; do
     [ $p -gt $NPROC ] && continue
-    [ $p -eq $NPROC ] && [ $NPROC -le 8 ] && continue
+    [ $p -eq $NPROC ] && continue
     echo "" >&2
     echo "  GOMAXPROCS=$p" >&2
     export GOMAXPROCS=$p
@@ -38,6 +38,10 @@ for p in 1 2 4 8 $NPROC; do
         /tmp/bench_$bench >> "$CSV_OUT"
     done
 done
+
+echo "" >&2
+echo "─── Lines of code ───────────────────────────────────────────" >&2
+python3 "$(dirname "$0")/count_loc.py" >> "$CSV_OUT"
 
 echo "" >&2
 echo "CSV results written to $CSV_OUT" >&2

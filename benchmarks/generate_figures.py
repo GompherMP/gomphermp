@@ -28,10 +28,9 @@ C_GMP2   = '#F07D1B'    # orange  (second GMP variant: task_depend)
 C_IDEAL  = '#AAAAAA'    # gray
 PROCS    = [1, 2, 4, 8, 16]
 
-REPO_ROOT    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CSV_PATH     = os.path.join(REPO_ROOT, 'benchmark_results.csv')
-LOC_CSV_PATH = os.path.join(REPO_ROOT, 'loc_results.csv')
-FIG_DIR      = os.path.join(REPO_ROOT, 'docs', 'thesis', 'figures')
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CSV_PATH  = os.path.join(REPO_ROOT, 'benchmark_results.csv')
+FIG_DIR   = os.path.join(REPO_ROOT, 'docs', 'thesis', 'figures')
 
 # ── Global style ──────────────────────────────────────────────────────────────
 plt.rcParams.update({
@@ -54,12 +53,19 @@ plt.rcParams.update({
 })
 
 # ── Data loading ──────────────────────────────────────────────────────────────
-raw = defaultdict(list)
+# procs > 0: timing rows (time_ns in nanoseconds, converted to ms)
+# procs == 0: LoC rows (time_ns holds the raw line count)
+raw  = defaultdict(list)
+_loc = {}
 with open(CSV_PATH, newline='') as f:
     reader = csv.DictReader(f)
     for row in reader:
-        key = (row['benchmark'], int(row['procs']), row['variant'])
-        raw[key].append(int(row['time_ns']) / 1e6)
+        p   = int(row['procs'])
+        key = (row['benchmark'], p, row['variant'])
+        if p > 0:
+            raw[key].append(int(row['time_ns']) / 1e6)
+        else:
+            _loc[(row['benchmark'], row['variant'])] = int(row['time_ns'])
 
 
 def _stats(values):
@@ -137,7 +143,9 @@ def fig_speedup_p16():
     ax.axhline(3.5, color='#cccccc', linewidth=0.9, zorder=0)
     ax.axhline(5.5, color='#cccccc', linewidth=0.9, zorder=0)
 
-    xmax = float(np.nanmax(np.concatenate([s_man + ci_man, s_gmp + ci_gmp]))) * 1.04
+    vals  = np.concatenate([s_man + ci_man, s_gmp + ci_gmp])
+    valid = vals[~np.isnan(vals)]
+    xmax  = (float(np.max(valid)) * 1.04) if len(valid) > 0 else 1.0
     ax.text(xmax * 0.99, 1.5,  'GompherMP vence',            ha='right', va='center',
             fontsize=8, color='#444', fontstyle='italic')
     ax.text(xmax * 0.99, 4.5,  'Paridad estadistica',         ha='right', va='center',
@@ -229,16 +237,30 @@ def fig_bench(bench, title, variants):
 
 
 # ── Figure: loc_comparison.png ───────────────────────────────────────────────
-def fig_loc_comparison():
-    # Ordered: most reduction (bottom) → most increase (top), as in loc_results.csv
-    data = []
-    with open(LOC_CSV_PATH, newline='') as f:
-        for row in csv.DictReader(f):
-            data.append((row['benchmark'], int(row['loc_manual']), int(row['loc_gompher'])))
+# Order: most LoC reduction (bottom) → most increase (top)
+LOC_ITEMS = [
+    # (bench, display_label, gmp_variant)
+    ('reduce',      'Reduce',                 'gompher'),
+    ('montecarlo',  'MonteCarlo',             'gompher'),
+    ('prefixsum',   'PrefixSum',              'gompher'),
+    ('matmul',      'MatMul',                 'gompher'),
+    ('sections',    'Sections',               'gompher'),
+    ('mergesort',   'MergeSort',              'gompher'),
+    ('quicksort',   'QuickSort',              'gompher'),
+    ('heavyreduce', 'HeavyReduce (taskloop)', 'taskloop'),
+    ('nqueens',     'N-Queens',               'gompher'),
+    ('pipeline',    'Pipeline',               'gompher'),
+    ('heavyreduce', 'HeavyReduce (depend)',   'task_depend'),
+]
 
-    labels  = [d[0] for d in data]
-    loc_man = np.array([d[1] for d in data], dtype=float)
-    loc_gmp = np.array([d[2] for d in data], dtype=float)
+
+def fig_loc_comparison():
+    def loc(bench, variant):
+        return _loc.get((bench, f'loc_{variant}'), 0)
+
+    labels  = [it[1] for it in LOC_ITEMS]
+    loc_man = np.array([loc(it[0], 'manual') for it in LOC_ITEMS], dtype=float)
+    loc_gmp = np.array([loc(it[0], it[2])    for it in LOC_ITEMS], dtype=float)
 
     n  = len(labels)
     y  = np.arange(n)
@@ -249,7 +271,8 @@ def fig_loc_comparison():
     ax.barh(y + bh / 2, loc_man, bh, color=C_MANUAL, label='Manual')
     ax.barh(y - bh / 2, loc_gmp, bh, color=C_GMP,    label='GompherMP')
 
-    xmax = float(max(max(loc_man), max(loc_gmp))) * 1.45
+    max_val = max(float(np.max(loc_man)), float(np.max(loc_gmp)))
+    xmax    = max_val * 1.45 if max_val > 0 else 1.0
 
     # delta-LoC annotations
     for i, (lm, lg) in enumerate(zip(loc_man, loc_gmp)):
