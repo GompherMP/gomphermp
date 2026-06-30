@@ -26,3 +26,4 @@
 #include "chapters/06_evaluation.typ"
 #include "chapters/07_conclusions.typ"
 #include "backmatter/references.typ"
+#include "backmatter/appendices.typ"
