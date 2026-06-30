@@ -231,7 +231,7 @@ En esta sección, se pretende mostrar cómo cada objetivo específico se traduce
   - Se obtiene la aprobación escrita de un experto en programación concurrente.],
   [R11. Informe de evaluación de rendimiento y escalabilidad.],
   [- Informe de evaluación de rendimiento.],
-  [- El informe presenta los resultados de tiempo de ejecución, _speedup_ y eficiencia para cada versión de los _benchmarks_.
+  [- El informe presenta los resultados de tiempo de ejecución y _speedup_ para cada versión de los _benchmarks_.
   - El informe incluye gráficos comparativos que visualizan los resultados.
   - Se presentan conclusiones respecto a la efectividad de la herramienta en el informe.
   - El informe debe ser aprobado por un experto en programación concurrente.],
@@ -299,9 +299,9 @@ A continuación, se detallan las herramientas, métodos y procedimientos necesar
       table.cell(colspan: 2)[*Objetivo 3: Evaluar la herramienta GompherMP mediante la ejecución de benchmarks, comparando sus resultados en términos de rendimiento y expresividad del código frente a las implementaciones secuenciales y paralelas manuales en Go.*],
       [*Resultado*], [*Herramientas, métodos y procedimientos*],
     ),
-    [R10. Suite de benchmarks implementada.], [*Herramientas:* Go, C, OpenMP \ *Métodos:* Benchmarking de algoritmos de computación intensiva \ *Procedimiento:* Performance profiling],
-    [R11. Informe de evaluación de rendimiento y escalabilidad.], [*Herramientas:* Python, Matplotlib, Typst \ *Métodos:* Análisis comparativo con pruebas estadísticas, análisis cualitativo \ *Procedimiento:* ANOVA, t-test],
-    [R12. Reporte de análisis comparativo sobre expresividad y productividad.], [*Herramientas:* Python, Scipy, Typst \ *Métodos:* Análisis comparativo con pruebas estadísticas, análisis cualitativo \ *Procedimiento:* ANOVA, t-test],
+    [R10. Suite de benchmarks implementada.], [*Herramientas:* Go, Python, Matplotlib \ *Métodos:* Benchmarking de algoritmos de computación intensiva \ *Procedimiento:* Performance profiling],
+    [R11. Informe de evaluación de rendimiento y escalabilidad.], [*Herramientas:* Python, Matplotlib, Typst \ *Métodos:* Estadísticas descriptivas, estimación por intervalos de confianza, análisis cualitativo \ *Procedimiento:* Cálculo de media, desviación estándar y CV; IC 95% vía distribución _t_-Student; propagación de errores para el _speedup_],
+    [R12. Reporte de análisis comparativo sobre expresividad y productividad.], [*Herramientas:* Python, Matplotlib, Typst \ *Métodos:* Conteo de líneas de código (LoC), análisis cualitativo \ *Procedimiento:* Cálculo de variación relativa de LoC; análisis comparativo de legibilidad y separación de incumbencias],
   ),
   caption: [Herramientas, métodos y procedimientos relacionados al objetivo específico 3 y sus resultados esperados],
   kind: table,
@@ -358,7 +358,7 @@ Según el equipo de Go (s.f.), el paquete `flag` de la librería estándar imple
 
 ==== C
 
-Según C-Language.org (s.f.), C es un lenguaje de programación de propósito general conocido por su rendimiento y su capacidad para operar a bajo nivel. En el marco de esta investigación, se utilizará para desarrollar implementaciones de referencia para los algoritmos de la suite de _benchmarks_, como se detalla en el objetivo específico 3. Dado que los estándares de paralelismo como OpenMP tienen su dominio tradicional en lenguajes de sistemas, estas versiones en C servirán como una línea base de rendimiento contra la cual se podrán contrastar los resultados de las implementaciones en Go, enriqueciendo así el informe de evaluación de rendimiento y escalabilidad.
+Según C-Language.org (s.f.), C es un lenguaje de programación de propósito general conocido por su rendimiento y su capacidad para operar a bajo nivel. En el marco de esta investigación, C y el estándar OpenMP constituyen la referencia conceptual sobre la cual se modeló la sintaxis y semántica de las directivas de GompherMP, cuyo subconjunto está inspirado en los constructos de OpenMP para C. La evaluación de rendimiento, sin embargo, se realiza comparando únicamente las tres variantes implementadas en Go: la versión secuencial, la paralela manual y la paralela con GompherMP.
 
 
 ==== OpenMP
@@ -368,17 +368,13 @@ Según la OpenMP Architecture Review Board (s.f.), OpenMP es una API que soporta
 
 ==== Python
 
-Según la Python Software Foundation (s.f.), Python es un lenguaje de programación que permite trabajar rápidamente e integrar sistemas de manera más efectiva. En el contexto de esta investigación, se utilizará para desarrollar versiones de los algoritmos de la suite de _benchmarks_, permitiendo una comparación de rendimiento y expresividad frente a la solución propuesta en Go, similar a como se plantea para C. Adicionalmente, se empleará para la automatización de la ejecución de pruebas y la generación de gráficos para el informe de evaluación, facilitando el análisis comparativo requerido en el objetivo específico 3.
+Según la Python Software Foundation (s.f.), Python es un lenguaje de programación que permite trabajar rápidamente e integrar sistemas de manera más efectiva. En el contexto de esta investigación, se empleará para la automatización de la ejecución de pruebas y la generación de gráficos para el informe de evaluación, facilitando el análisis comparativo requerido en el objetivo específico 3.
 
 
 ==== Matplotlib
 
 Según The Matplotlib Development Team (s.f.), Matplotlib es una librería completa para crear visualizaciones estáticas, animadas e interactivas en Python. En el marco de este proyecto, esta librería será fundamental para cumplir con los requisitos del objetivo específico 3, ya que se empleará para generar los gráficos comparativos que visualizarán los resultados de rendimiento y escalabilidad. Estos gráficos, que mostrarán métricas como el tiempo de ejecución y el _speedup_ de las versiones secuencial, manual y con GompherMP, son un componente esencial del informe de evaluación de rendimiento.
 
-
-==== Scipy
-
-Según la comunidad de SciPy (s.f.), SciPy es una librería de Python que proporciona algoritmos y rutinas numéricas eficientes para optimización, álgebra lineal y estadística. En el marco de esta investigación, se utilizará para realizar las pruebas estadísticas sobre los datos de rendimiento obtenidos de la suite de _benchmarks_. Esto permitirá validar con rigor si las diferencias en métricas como el _speedup_ y el tiempo de ejecución son significativas, fortaleciendo las conclusiones del informe de evaluación de rendimiento.
 
 
 === Métodos
@@ -416,9 +412,9 @@ El procedimiento consiste en recorrer el AST generado en la fase previa (_parsin
 Según Jain (1991), el _benchmarking_ es el proceso de ejecutar un programa para evaluar su rendimiento relativo de forma cuantitativa. Este método será la base para la evaluación de GompherMP (objetivo específico 3), donde se implementará una suite de _benchmarks_ con al menos tres algoritmos de cómputo intensivo. La ejecución de estos algoritmos en sus versiones secuencial, paralela manual y con GompherMP permitirá medir y comparar métricas clave como el tiempo de ejecución y el _speedup_.
 
 
-==== Análisis comparativo con pruebas estadísticas
+==== Análisis estadístico descriptivo y estimación por intervalos de confianza
 
-De acuerdo con Thiel (2014), un análisis comparativo utiliza métodos estadísticos para determinar si las diferencias observadas entre los resultados de dos o más grupos son significativas o si podrían haber ocurrido por azar. Este método se empleará para analizar los datos de rendimiento obtenidos del _benchmarking_. Mediante pruebas estadísticas, se validará si la mejora de rendimiento de GompherMP es estadísticamente significativa en comparación con las versiones secuencial y manual, fortaleciendo las conclusiones del informe de evaluación.
+Para evaluar los resultados del _benchmarking_ de forma rigurosa, se emplearán métodos de estadística descriptiva combinados con estimación por intervalos de confianza. Para cada configuración (combinación de algoritmo, número de procesadores y variante), se calculará la media aritmética como estimador puntual del tiempo de ejecución central, la desviación estándar muestral para cuantificar la dispersión de las repeticiones y el coeficiente de variación como indicador relativo de estabilidad que permite comparar la volatilidad entre _benchmarks_ de distinta magnitud. El intervalo de confianza al 95% se construirá mediante la distribución $t$-Student con $n - 1$ grados de libertad. La incertidumbre del _speedup_ se estimará mediante propagación cuadrática de errores relativos, dado que es el cociente de dos estimadores con varianza propia. La significancia práctica de las diferencias entre variantes se evaluará verificando si sus intervalos de confianza se solapan.
 
 
 ==== Análisis cualitativo
@@ -444,11 +440,11 @@ De acuerdo con Sommerville (2011), las pruebas de integración tienen como objet
 Según el equipo de Go (s.f.), el performance profiling es el análisis del software para identificar cuellos de botella y optimizar su rendimiento. Este procedimiento se aplicará utilizando herramientas del ecosistema de Go, como pprof, sobre el código generado por GompherMP. El objetivo es analizar el comportamiento de la librería de runtime y los algoritmos de la suite de _benchmarks_ para detectar posibles sobrecargas (_overhead_) y asegurar que la implementación sea lo más eficiente posible.
 
 
-==== ANOVA
+==== Estadísticas descriptivas e intervalos de confianza
 
-Según Snedecor y Cochran (1989), el análisis de varianza (ANOVA) es una prueba estadística utilizada para determinar si existen diferencias estadísticamente significativas entre las medias de tres o más grupos independientes. Este procedimiento se empleará en el análisis de los resultados de los _benchmarks_ para comparar simultáneamente los tiempos de ejecución de las versiones secuencial, paralela manual y con GompherMP de cada algoritmo, y así determinar si el método de paralelización tiene un efecto significativo en el rendimiento.
+Según Jain (1991), las estadísticas descriptivas y la estimación por intervalos de confianza son técnicas fundamentales para analizar el rendimiento de sistemas computacionales de forma rigurosa. Este procedimiento se empleará para resumir los tiempos de ejecución de cada configuración de _benchmark_: se calculará la media aritmética, la desviación estándar muestral y el coeficiente de variación de las $n$ repeticiones. El intervalo de confianza al 95% se construirá mediante la distribución $t$-Student con $nu = n - 1$ grados de libertad, y la significancia práctica de las diferencias entre variantes se evaluará verificando si sus intervalos de confianza se solapan.
 
 
-==== Prueba t (t-test)
+==== Propagación de errores para el speedup
 
-De acuerdo con Snedecor y Cochran (1989), la prueba t es un método estadístico que se utiliza para comparar las medias de dos grupos. En el marco de esta investigación, este procedimiento se usará para realizar comparaciones específicas después de un análisis ANOVA, por ejemplo, para determinar si la diferencia de rendimiento entre la versión paralela con GompherMP y la versión paralela manual es estadísticamente significativa, ofreciendo una validación más granular de la eficiencia de la herramienta.
+Dado que el _speedup_ es el cociente entre el tiempo medio de la versión secuencial y el tiempo medio de la variante paralela evaluada, su incertidumbre se estimará mediante propagación cuadrática de errores relativos. Cuando una magnitud derivada es el cociente de dos estimadores con varianza propia, el error relativo combinado resulta de la raíz cuadrada de la suma de los cuadrados de los errores relativos individuales, expresado como $sigma_(S_P) / S_P = sqrt("CV"_"seq"^2 + "CV"_P^2)$, donde $"CV"_"seq"$ y $"CV"_P$ son los coeficientes de variación de la versión secuencial y de la variante paralela evaluada, respectivamente.
